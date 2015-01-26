@@ -63,6 +63,8 @@ void *Worker::Entry( )
 	// loop as long as flag m_bLife = 1
 	while( m_bLife )
 	{
+		if( TestDestroy( ) == 1 )
+			break;
 		//TODO: from here I want to do most of the things I have to do
 		// can be compared to the Main-loop of my application
 		// this is because it is not a nice way to do it from example_UI
