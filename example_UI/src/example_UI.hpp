@@ -68,19 +68,24 @@ public:
     void createMenu();
     void createGUIContend();
 
+    void setWorker(Worker* w);
+
     // event handlers (these functions should _not_ be virtual)
     void OnQuit(wxCommandEvent& event);
     void OnAbout(wxCommandEvent& event);
     void OnStart(wxCommandEvent& event);
     void OnStop(wxCommandEvent& event);
-    void setWorker(Worker* w);
+    void OnSize(wxSizeEvent& event);
 
+//    bool initialized = false;
 private:
     // any class wishing to process wxWidgets events must use this macro
     wxDECLARE_EVENT_TABLE();
     Worker* 	m_pWorker;
     CameraView* m_view1;
     CameraView* m_view2;
+    wxStaticBox *pLiveCameraBox;
+    wxStaticBox *pCameraBox;
     wxPanel*	m_pMainPanel;
 };
 

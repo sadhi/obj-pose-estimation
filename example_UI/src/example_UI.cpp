@@ -15,6 +15,7 @@
 // ----------------------------------------------------------------------------
 
 // For compilers that support precompilation, includes "wx/wx.h".
+#include <iostream>
 #include <wx/wxprec.h>
 #include "wx/thread.h"
 
@@ -32,6 +33,8 @@
 #include "worker.h"
 #include "ui/CameraView.h"
 
+using namespace std;
+
 // ----------------------------------------------------------------------------
 // event tables and other macros for wxWidgets
 // ----------------------------------------------------------------------------
@@ -44,6 +47,7 @@ EVT_MENU(Minimal_Quit,  MyFrame::OnQuit)
 EVT_MENU(Minimal_About, MyFrame::OnAbout)
 EVT_MENU(Minimal_Start, MyFrame::OnStart)
 EVT_MENU(Minimal_Stop, MyFrame::OnStop)
+EVT_SIZE(MyFrame::OnSize)
 wxEND_EVENT_TABLE()
 
 // Create a new application object: this macro will allow wxWidgets to create
@@ -71,7 +75,7 @@ bool MyApp::OnInit()
 
 	// create the main application window
 	MyFrame *frame = new MyFrame("Minimal wxWidgets App", wxPoint(-1, -1), wxSize(1280, 720));
-//	frame->SetSize(1280, 720);
+	//	frame->SetSize(1280, 720);
 	Worker* w = new Worker( frame );
 	// create thread or fail on exit
 	if ( w->Create() != wxTHREAD_NO_ERROR )
@@ -82,6 +86,7 @@ bool MyApp::OnInit()
 	// and show it (the frames, unlike simple controls, are not shown when
 	// created initially)
 	frame->Show(true);
+	frame->initialized = true;
 
 	// success: wxApp::OnRun() will be called which will enter the main message
 	// loop and the application will run. If we returned false here, the
@@ -96,11 +101,11 @@ bool MyApp::OnInit()
 // frame constructor
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size,  wxMINIMIZE_BOX | \
-		wxMAXIMIZE_BOX | wxSYSTEM_MENU | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN)
+		wxMAXIMIZE_BOX | wxSYSTEM_MENU | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN )
 {
 	SetMaxClientSize(wxSize(1920,1080));
 	SetMinClientSize(wxSize(1024, 720));
-//	Maximize(true);
+	Maximize(true);
 	createMenu();
 	createGUIContend();
 
@@ -109,6 +114,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	CreateStatusBar(2);
 	SetStatusText("Welcome to wxWidgets!");
 #endif // wxUSE_STATUSBAR
+	Layout();
 }
 
 MyFrame::~MyFrame( )
@@ -151,22 +157,53 @@ void MyFrame::createGUIContend()
 	// build static/logical boxes
 
 	// build static/logical boxes
+
 	wxStaticBox *pLiveCameraBox = new wxStaticBox( m_pMainPanel, -1, "Live camera",
 			wxPoint(5,5), wxSize(400,315) );
 
 	wxStaticBox *pCameraBox = new wxStaticBox( m_pMainPanel, -1, "Extra camera info",
-				wxPoint(5,325), wxSize(400,315) );
+			wxPoint(5,325), wxSize(400,315) );
 
 	// get my main static sizer by the box
 	wxStaticBoxSizer *pMainSizer1 = new wxStaticBoxSizer( pLiveCameraBox, wxHORIZONTAL );
 	wxStaticBoxSizer *pMainSizer2 = new wxStaticBoxSizer( pCameraBox, wxHORIZONTAL );
 
-	m_view1 = new CameraView( m_pMainPanel, wxPoint(15,25), wxSize(380, 285) );
+	m_view1 = new CameraView( m_pMainPanel, wxPoint(-1, -1), wxSize(380, 285) );
+	m_view1->SetMaxSize(wxSize(400,300));
 	m_view2 = new CameraView( m_pMainPanel, wxPoint(15,345), wxSize(380, 285) );
-	pMainSizer1->Add( m_view1, 1, wxALIGN_NOT );
-	pMainSizer2->Add( m_view2, 1, wxALIGN_NOT );
+	m_view2->SetMaxSize(wxSize(400,300));
+	pMainSizer1->Add( m_view1, 1, wxALIGN_CENTER);
+	pMainSizer2->Add( m_view2, 1, wxALIGN_CENTRE);
 
-//	m_pMainPanel->SetSizer( pMainSizer );
+	/*
+	 * grid works something like this:
+	 *  	1	|	2	|	3
+	 *  	------------------
+	 *  	4	|	5	|	6
+	 *  	if you define a grid of 2x3 you should add them in this order for placement
+	 *  	it doesn't matter what you align them to
+	 *  	the alignment only matters when you start to resize the frame the objects are in
+	 */
+	wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
+	wxFlexGridSizer *gridsizer = new wxFlexGridSizer(2, 3, 10, 10);
+	gridsizer->Add(pMainSizer1, wxSizerFlags().Align( wxSHAPED | wxEXPAND));
+	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
+			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_TOP));
+	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
+			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_TOP));
+	gridsizer->Add(pMainSizer2, wxSizerFlags(1).Align( wxSHAPED | wxEXPAND));
+	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
+			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_BOTTOM));
+
+	gridsizer->AddGrowableRow(0, 0);
+	gridsizer->AddGrowableRow(1, 0);
+	gridsizer->AddGrowableCol(0, 0);
+
+	topsizer->Add(gridsizer, 1, wxALL | wxEXPAND, 15);
+
+
+	//	m_pMainPanel->SetSizer( pMainSizer1 );
+	m_pMainPanel->SetSizer( topsizer );
 	pMainSizer1->SetSizeHints( m_pMainPanel );
 	m_pMainPanel->SetAutoLayout( TRUE );
 
@@ -177,6 +214,7 @@ void MyFrame::createGUIContend()
 
 	// display my stuff
 	SetAutoLayout( TRUE );
+
 }
 
 // event handlers
@@ -221,6 +259,24 @@ void MyFrame::OnStop(wxCommandEvent& WXUNUSED(event))
 			wxOK | wxICON_INFORMATION,
 			this);
 }
+
+void MyFrame::OnSize(wxSizeEvent& event)
+{
+	//do the parent implementation
+	wxFrame::OnSize(event);
+//	if(initialized)
+//	{
+//		cout<< "spam" << endl;
+////		wxPoint p = pLiveCameraBox->GetScreenPosition();
+//		wxSize s = pLiveCameraBox->GetSize();
+//		int x = (int) (s.GetWidth()/2-m_view1->GetSize().GetWidth()/2 + 15);
+//		int y = (int) (s.GetHeight()/2-m_view1->GetSize().GetHeight()/2 + 15);
+//		wxPoint newPos = wxPoint(x, y);
+//		m_view1->Move(newPos);
+//	}
+	//TODO: ... center the camera in their boxes ...
+}
+
 
 void MyFrame::setWorker(Worker* w)
 {
