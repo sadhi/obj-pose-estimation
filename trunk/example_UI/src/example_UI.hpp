@@ -66,7 +66,7 @@ public:
     virtual ~MyFrame();
 
     void createMenu();
-    void createGUIContend();
+    void createGUIContent();
 
     void setWorker(Worker* w);
 
@@ -77,7 +77,7 @@ public:
     void OnStop(wxCommandEvent& event);
     void OnSize(wxSizeEvent& event);
 
-//    bool initialized = false;
+    bool initialized = false;
 private:
     // any class wishing to process wxWidgets events must use this macro
     wxDECLARE_EVENT_TABLE();
