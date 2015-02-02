@@ -107,7 +107,7 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 	SetMinClientSize(wxSize(1024, 720));
 	Maximize(true);
 	createMenu();
-	createGUIContend();
+	createGUIContent();
 
 #if wxUSE_STATUSBAR
 	// create a status bar just for fun (by default with 1 pane only)
@@ -148,7 +148,7 @@ void MyFrame::createMenu()
 }
 
 //TODO: this stuff should dynamically change depending on the screen resolution!!!
-void MyFrame::createGUIContend()
+void MyFrame::createGUIContent()
 {
 	int width, height;
 	this->GetClientSize(&width, &height);
