@@ -12,8 +12,6 @@
 #define _DYNAMIC_API_H_
 
 #include "uc480.h"
-//#   define DS_EXPORT
-//#include "uc480CaptureInterface.h"
 
 #define USB2CAMERA_MACRO_DO(name) typedef INT (__cdecl* IS__##name)
 #define DECLARE(pars) pars;
@@ -44,6 +42,14 @@ protected:
 public:
   long Connect(const IS_CHAR* dllName);
   long Disconnect();
+
+	HMODULE getHMod() const {
+		return m_hMod;
+	}
+
+	void setHMod(HMODULE hMod) {
+		m_hMod = hMod;
+	}
 
 private:
   bool _SetPointers(bool Load);

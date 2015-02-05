@@ -76,8 +76,10 @@ public:
     void OnStart(wxCommandEvent& event);
     void OnStop(wxCommandEvent& event);
     void OnSize(wxSizeEvent& event);
+    void OnResize(wxSizeEvent& event);
 
     bool initialized = false;
+    bool resizingAllowed = true;
 private:
     // any class wishing to process wxWidgets events must use this macro
     wxDECLARE_EVENT_TABLE();

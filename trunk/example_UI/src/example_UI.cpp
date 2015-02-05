@@ -48,6 +48,7 @@ EVT_MENU(Minimal_About, MyFrame::OnAbout)
 EVT_MENU(Minimal_Start, MyFrame::OnStart)
 EVT_MENU(Minimal_Stop, MyFrame::OnStop)
 EVT_SIZE(MyFrame::OnSize)
+EVT_SIZING(MyFrame::OnResize)
 wxEND_EVENT_TABLE()
 
 // Create a new application object: this macro will allow wxWidgets to create
@@ -101,7 +102,7 @@ bool MyApp::OnInit()
 // frame constructor
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size,  wxMINIMIZE_BOX | \
-		wxMAXIMIZE_BOX | wxSYSTEM_MENU | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN )
+		wxMAXIMIZE_BOX | wxSYSTEM_MENU | wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN )
 {
 	SetMaxClientSize(wxSize(1920,1080));
 	SetMinClientSize(wxSize(1024, 720));
@@ -158,22 +159,33 @@ void MyFrame::createGUIContent()
 
 	// build static/logical boxes
 
-	wxStaticBox *pLiveCameraBox = new wxStaticBox( m_pMainPanel, -1, "Live camera",
+	pLiveCameraBox = new wxStaticBox( m_pMainPanel, -1, "Live camera",
 			wxPoint(5,5), wxSize(400,315) );
 
-	wxStaticBox *pCameraBox = new wxStaticBox( m_pMainPanel, -1, "Extra camera info",
+	pCameraBox = new wxStaticBox( m_pMainPanel, -1, "Extra camera info",
 			wxPoint(5,325), wxSize(400,315) );
 
 	// get my main static sizer by the box
 	wxStaticBoxSizer *pMainSizer1 = new wxStaticBoxSizer( pLiveCameraBox, wxHORIZONTAL );
 	wxStaticBoxSizer *pMainSizer2 = new wxStaticBoxSizer( pCameraBox, wxHORIZONTAL );
 
-	m_view1 = new CameraView( m_pMainPanel, wxPoint(-1, -1), wxSize(380, 285) );
+	int sx = pLiveCameraBox->GetSize().GetWidth();
+	int sy = pLiveCameraBox->GetSize().GetHeight();
+	int x = (int) (sx/2 - 190 + 15);
+	int y = (int) (sy/2 - 142 + 15);
+	wxPoint pos = wxPoint(x, y);
+	m_view1 = new CameraView( m_pMainPanel, pos, wxSize(380, 285) );
 	m_view1->SetMaxSize(wxSize(400,300));
-	m_view2 = new CameraView( m_pMainPanel, wxPoint(15,345), wxSize(380, 285) );
+
+	sx = pCameraBox->GetSize().GetWidth();
+	sy = pCameraBox->GetSize().GetHeight();
+	x = (int) (sx/2 - 190 + 15);
+	y = (int) (sy/2 - 142 + 345);
+	pos = wxPoint(x, y);
+	m_view2 = new CameraView( m_pMainPanel, pos, wxSize(380, 285) );
 	m_view2->SetMaxSize(wxSize(400,300));
-	pMainSizer1->Add( m_view1, 1, wxALIGN_CENTER);
-	pMainSizer2->Add( m_view2, 1, wxALIGN_CENTRE);
+	pMainSizer1->Add( m_view1, 1, wxALIGN_NOT);
+	pMainSizer2->Add( m_view2, 1, wxALIGN_NOT);
 
 	/*
 	 * grid works something like this:
@@ -186,12 +198,12 @@ void MyFrame::createGUIContent()
 	 */
 	wxBoxSizer *topsizer = new wxBoxSizer( wxVERTICAL );
 	wxFlexGridSizer *gridsizer = new wxFlexGridSizer(2, 3, 10, 10);
-	gridsizer->Add(pMainSizer1, wxSizerFlags().Align( wxSHAPED | wxEXPAND));
+	gridsizer->Add(pMainSizer1, wxSizerFlags().Align( wxSHAPED | wxEXPAND|wxALIGN_NOT));
 	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
 			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_TOP));
 	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
 			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_TOP));
-	gridsizer->Add(pMainSizer2, wxSizerFlags(1).Align( wxSHAPED | wxEXPAND));
+	gridsizer->Add(pMainSizer2, wxSizerFlags(1).Align( wxSHAPED | wxEXPAND|wxALIGN_NOT));
 	gridsizer->Add(new wxStaticText(m_pMainPanel, wxID_ANY, wxT("Another label")),
 			wxSizerFlags().Align(wxALIGN_RIGHT | wxALIGN_BOTTOM));
 
@@ -213,7 +225,7 @@ void MyFrame::createGUIContent()
 	SetSizer( pTopSizer );
 
 	// display my stuff
-	SetAutoLayout( TRUE );
+//	SetAutoLayout( TRUE );
 
 }
 
@@ -262,21 +274,62 @@ void MyFrame::OnStop(wxCommandEvent& WXUNUSED(event))
 
 void MyFrame::OnSize(wxSizeEvent& event)
 {
-	//do the parent implementation
-	wxFrame::OnSize(event);
-//	if(initialized)
-//	{
-//		cout<< "spam" << endl;
-////		wxPoint p = pLiveCameraBox->GetScreenPosition();
-//		wxSize s = pLiveCameraBox->GetSize();
-//		int x = (int) (s.GetWidth()/2-m_view1->GetSize().GetWidth()/2 + 15);
-//		int y = (int) (s.GetHeight()/2-m_view1->GetSize().GetHeight()/2 + 15);
-//		wxPoint newPos = wxPoint(x, y);
-//		m_view1->Move(newPos);
-//	}
+	if(resizingAllowed)
+	{
+		resizingAllowed =false;
+		//do the parent implementation
+		wxFrame::OnSize(event);
+		if(initialized)
+		{
+			cout<< "max/min" << endl;
+			//		wxPoint p = pLiveCameraBox->GetScreenPosition();
+			int sx = pLiveCameraBox->GetSize().GetWidth();
+			int sy = pLiveCameraBox->GetSize().GetHeight();
+			int x = (int) (sx/2-m_view1->GetSize().GetWidth()/2 + 15);
+			int y = (int) (sy/2-m_view1->GetSize().GetHeight()/2 + 15);
+			wxPoint newPos = wxPoint(x, y);
+			m_view1->SetPosition(newPos);
+
+			sx = pCameraBox->GetSize().GetWidth();
+			sy = pCameraBox->GetSize().GetHeight();
+			x = (int) (sx/2-m_view2->GetSize().GetWidth()/2 + 15);
+			y = (int) (sy/2-m_view2->GetSize().GetHeight()/2 + pCameraBox->GetPosition().y+15);
+			newPos = wxPoint(x, y);
+			m_view2->SetPosition(newPos);
+		}
+		resizingAllowed =true;
+	}
 	//TODO: ... center the camera in their boxes ...
 }
 
+void MyFrame::OnResize(wxSizeEvent& event)
+{
+	if(resizingAllowed)
+	{
+		resizingAllowed =false;
+		//do the parent implementation
+		wxFrame::OnSize(event);
+		if(initialized)
+		{
+			cout<< "max/min" << endl;
+			//		wxPoint p = pLiveCameraBox->GetScreenPosition();
+			int sx = pLiveCameraBox->GetSize().GetWidth();
+			int sy = pLiveCameraBox->GetSize().GetHeight();
+			int x = (int) (sx/2-m_view1->GetSize().GetWidth()/2 + 15);
+			int y = (int) (sy/2-m_view1->GetSize().GetHeight()/2 + 15);
+			wxPoint newPos = wxPoint(x, y);
+			m_view1->SetPosition(newPos);
+
+			sx = pCameraBox->GetSize().GetWidth();
+			sy = pCameraBox->GetSize().GetHeight();
+			x = (int) (sx/2-m_view2->GetSize().GetWidth()/2 + 15);
+			y = (int) (sy/2-m_view2->GetSize().GetHeight()/2 + pCameraBox->GetPosition().y+15);
+			newPos = wxPoint(x, y);
+			m_view2->SetPosition(newPos);
+		}
+		resizingAllowed =true;
+	}	//TODO: ... center the camera in their boxes ...
+}
 
 void MyFrame::setWorker(Worker* w)
 {
