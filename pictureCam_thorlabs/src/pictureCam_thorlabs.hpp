@@ -45,7 +45,10 @@ public:
 	int  InitDisplayMode();
 	void render();
 	void setExposure(int value);
+	void setFps(int value);
+	void setPixelClock(int value);
 
+	//general getters/setters
 	HWND getHDisplay();
 	void setHDisplay(HWND hDisplay) ;
 	INT getNSizeX();
@@ -58,7 +61,7 @@ public:
 	void setPcImageMemory(char* pcImageMemory);
 	INT getLMemoryId();
 	void setLMemoryId(INT lMemoryId);
-	Cuc480 getCamera();	/*should not be used, don't know how or why but this causes the cuc480 destructor to be called*/
+	Cuc480 getCamera();
 
 	HCAM  GetCameraHandle ();
 	HWND  GetWindowHandle ();

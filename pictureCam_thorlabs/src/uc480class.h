@@ -104,6 +104,7 @@ class Cuc480 : public Cuc480Dll
     // timing functions
 	int   GetPixelClockRange	( int *nMin, int *nMax );
     int   SetPixelClock(int nClock);
+    int   GetFpsRange	( double *nMin, double *nMax , double * nInterval );
     int   SetFrameRate(double dFr, double* pdFrNew);
     int   SetExposureTime(double EXP, double* newEXP );
 

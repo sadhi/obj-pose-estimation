@@ -397,6 +397,13 @@ int Cuc480::SetPixelClock(int nClock)
 	return is_SetPixelClock(m_hu, nClock);
 }
 
+int	Cuc480::GetFpsRange	( double *nMin, double *nMax, double * nInterval )
+{
+	if( m_hu == NULL )
+		return IS_NO_SUCCESS;
+	else
+		return is_GetFrameTimeRange( m_hu, nMin, nMax, nInterval );
+}
 
 int Cuc480::SetFrameRate(double dFr, double* pdFrNew)
 {

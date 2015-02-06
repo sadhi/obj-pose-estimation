@@ -269,77 +269,164 @@ void pictureCam_thorlabs::render()
 }
 
 /*
- * the exposure range is roughly between 0.07 - 99 ms
+ * the exposure range is roughly between 0.07 - 99 ms for normal fps
  */
 void pictureCam_thorlabs::setExposure(int value)
 {
-	double exposure = 0;
-	//TODO: this should scale depending on getExposureRange
+	double e = 0;
 	if(m_camera.IsInit())
 	{
 		double min = 10;
 		double max = 25;
 		double interval = 3;
+		double tmp= 0;
 		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE_MIN, &min, sizeof(min));
 		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE_MAX, &max, sizeof(max));
 		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_GET_EXPOSURE_RANGE_INC, &interval, sizeof(interval));
 		cout << "the minimum exposure is "<< min << ", the maximum exposure is "<< max << ", with an interval of "<< interval << endl;
-		if(value!=0)
-			exposure = (value/14) * max;
+		if(value>0 && value<=20)
+		{
+			e = (max*value);
+			e /= 20;
+		}
+		else if(value>20)
+		{
+			e = max;
+		}
 		else
-			exposure = min;
-		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_SET_EXPOSURE, &exposure, sizeof(exposure));
-		cout<<"expsoure was set to " << exposure <<endl;
+		{
+			e = min;
+		}
+		tmp = e;
+		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_SET_EXPOSURE, &e, sizeof(e));
+		cout<<"tried to set exposure to "<<tmp <<", actually set to " << e <<endl;
 	}
 	else
 	{
 		cout << "something went wrong and there is no open camera."<< endl;
 	}
-	//	double result = 10;
-	//	HRESULT status= S_OK;
-	//		status = this->is_AutoParameter(m_hu, IS_SET_ENABLE_AUTO_SHUTTER,FALSE,NULL);
-	//	try
-	//	  {
-	//status = this->is_Exposure(m_hu,IS_EXPOSURE_CMD_GET_EXPOSURE_DEFAULT,&result,sizeof(result));
-	//	exposure = 10;
-	//	is_SetExposureTime(m_hu, 10, &result);
-	//
-	//	  }
-	//	  catch (exception& e)
-	//	  {
-	//	    cout << e.what() << endl;
-	//	  }
-	//	if(status != S_OK)
-	//		cout<<"is_exposure came back with "<< status <<endl;
-	//	else
-	//		cout<<"exposure was set to "<< result <<endl;
-	/*
-	// get the uc480CapturePin interface of the source filter
-	Iuc480CapturePin* pCapturePin= NULL;
-	status= CoCreateInstance (IID_Iuc480CapturePin, NULL,
-			CLSCTX_INPROC, IID_Iuc480CapturePin, (void **)&pCapturePin );
-	if(status!= S_OK)
-		cout<<"failed to load interface, with code "<<status<<endl;
-	pCapturePin->SetExposureTime(exposure);
-
-	//release it back to the wild
-	pCapturePin->Release();
-	pCapturePin= NULL;
-	 */
 }
 
-static void on_trackbar(int i, void* )
+void pictureCam_thorlabs::setFps(int value)
+{
+	if(m_camera.IsInit())
+	{
+		double fps = value+1;
+		double min = 0, max = 0, interval = 0;
+
+		m_camera.GetFpsRange(&min, &max, &interval);
+		cout << "the minimum fps is "<< min << ", the maximum fps is "<< max << ", with an interval of "<< interval << endl;
+		if(value>1 && value<=24)
+		{
+			fps *= (max/25);
+//			fps /= 24;
+		}
+		else if(value>24)
+		{
+			fps = max;
+		}
+		else
+		{
+			fps = min;
+		}
+		double tmp = fps;
+		m_camera.SetFrameRate(fps, &fps);
+		cout<<"tried to set fps to "<<tmp <<", actually  set to " << fps <<endl;
+	}
+	else
+	{
+		cout << "something went wrong and there is no open camera."<< endl;
+	}
+}
+
+void pictureCam_thorlabs::setPixelClock(int value)
+{
+	if(m_camera.IsInit())
+	{
+		double pc = value+5;
+		m_camera.SetPixelClock(pc);
+		cout<<"pixel clock was set to " << pc <<endl;
+		double fps = 0;
+		m_camera.is_GetFramesPerSecond(m_camera.GetCameraHandle(),&fps);
+		double exp=0;
+		m_camera.is_Exposure(m_camera.GetCameraHandle(), IS_EXPOSURE_CMD_GET_EXPOSURE, &exp, sizeof(exp));
+		cout<<"current FPS: " << fps<<", Current exposure: "<<exp<<endl;
+	}
+	else
+	{
+		cout << "something went wrong and there is no open camera."<< endl;
+	}
+}
+
+/*
+ * operations used by 'Main'
+ */
+
+static void on_expoTrackbar(int i, void* )
+{
+	pct->setExposure(i);
+}
+
+static void on_fpsTrackbar(int i, void* )
 {
 	//	pictureCam_thorlabs *pct =(pictureCam_thorlabs*) p;
-	pct->setExposure(i);
+	pct->setFps(i);
+}
+
+static void on_pixelTrackbar(int i, void* )
+{
+	//	pictureCam_thorlabs *pct =(pictureCam_thorlabs*) p;
+	pct->setPixelClock(i);
+}
+
+void calcHist(Mat *src)
+{
+	/// Establish the number of bins
+	int histSize = 256;
+
+	/// Set the ranges ( for B,G,R) )
+	float range[] = { 0, 256 } ;
+	const float* histRange = { range };
+
+	bool uniform = true; bool accumulate = false;
+
+	Mat g_hist;
+
+	/// Compute the histograms:
+	calcHist( src, 1, 0, Mat(), g_hist, 1, &histSize, &histRange, uniform, accumulate );
+
+	// Draw the histograms for B, G and R
+	int hist_w = 512; int hist_h = 200;
+	int bin_w = cvRound( (double) hist_w/histSize );
+
+	Mat histImage( hist_h, hist_w, CV_8UC3, Scalar( 0,0,0) );
+	normalize(g_hist, g_hist, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+
+	/// Draw for each channel
+	for( int i = 1; i < histSize; i++ )
+	{
+		line( histImage, Point( bin_w*(i-1), hist_h - cvRound(g_hist.at<float>(i-1)) ) ,
+				Point( bin_w*(i), hist_h - cvRound(g_hist.at<float>(i)) ),
+				Scalar( 0, 255, 0), 2, 8, 0  );
+	}
+	/// Display
+	imshow("histogram", histImage );
 }
 
 int main() {
 	namedWindow( "Original", WINDOW_AUTOSIZE );
+	resizeWindow("Original",1200,950);
 	pct = new pictureCam_thorlabs((HWND)cvGetWindowHandle("Original"));
 	namedWindow( "result", WINDOW_AUTOSIZE );
-	int expo = 1;
-	createTrackbar("exposure_slider", "Original", &expo, 14, on_trackbar);
+	resizeWindow("result",50,1);
+	namedWindow("histogram", WINDOW_AUTOSIZE );
+	resizeWindow("histogram",50,1);
+	int pc = 25; 	// pixel clock values are between 5 and 40
+//	int fps = 24;	// max and min fps are based on the pixel clock
+	int expo = 20;	// the exposure is depended of everything...
+	createTrackbar("Pixel clock", "Original", &pc, 35, on_pixelTrackbar);
+//	createTrackbar("fps_slider", "Original", &fps, 24, on_fpsTrackbar);
+	createTrackbar("exposure_slider", "Original", &expo, 20, on_expoTrackbar);
 	//	on_trackbar(expo, pct);		//not needed is done automatically, but still here for me
 	Mat imgMat;
 	IplImage* cv_image ;
@@ -348,6 +435,14 @@ int main() {
 	while(running)
 	{
 		pct->render();
+
+		cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
+		cvSetData(cv_image, pct->getPcImageMemory(), cv_image->widthStep);
+		imgMat = Mat(cv_image, false);
+		cvtColor(imgMat, imgMat, CV_BGR2GRAY);
+//		equalizeHist( imgMat, imgMat );		//preferably not stretched with software
+		calcHist(&imgMat);
+		imshow("result", imgMat);
 		switch(waitKey(1))
 		{
 		case 27:	//esc
@@ -355,18 +450,20 @@ int main() {
 			cout << "Closing application." << endl;
 			running = false;
 			break;
-		case 's':
-			/*
+		/*case 's':
+
 			 * get an image from the image memory
 			 * convert it to cv::mat
 			 * display the image
-			 */
+
 			cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
 			cvSetData(cv_image, pct->getPcImageMemory(), cv_image->widthStep);
 			imgMat = Mat(cv_image, false);
-			//			imgMat +=imgMat;
+			cvtColor(imgMat, imgMat, CV_BGR2GRAY);
+//			equalizeHist( imgMat, imgMat );		//preferably not stretched with software
+			calcHist(&imgMat);
 			imshow("result", imgMat);
-			break;
+			break;*/
 		default:
 			break;
 		}
