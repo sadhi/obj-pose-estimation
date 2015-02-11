@@ -45,6 +45,7 @@
 									<listOptionValue builtIn="false" value="libopencv_core2410"/>
 									<listOptionValue builtIn="false" value="libopencv_highgui2410"/>
 									<listOptionValue builtIn="false" value="libopencv_imgproc2410"/>
+									<listOptionValue builtIn="false" value="libopencv_calib3d2410"/>
 									<listOptionValue builtIn="false" value="uc480"/>
 									<listOptionValue builtIn="false" value="uc480_tools"/>
 								</option>
