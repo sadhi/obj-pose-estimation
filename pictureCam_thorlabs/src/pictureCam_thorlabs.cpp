@@ -18,14 +18,20 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <opencv2/gpu/gpu.hpp>
 
 using namespace cv;
 using namespace std;
 
+//probably should not define them here like this, but it makes it a lot easier for me
 pictureCam_thorlabs *pct;
+double high, low, avg, ndx, badMeh;
+string filename = "out_camera_data.yml";
+Mat intrinsics, distortion;
 
-double high, low, avg, ndx;
-
+/*
+ * PictureCam_Thorlabs is basically the same as uc480Live from Thorlabs only without MFC
+ */
 pictureCam_thorlabs::pictureCam_thorlabs(HWND h)
 {
 	m_hDisplay = h;			// handle to diplay window
@@ -236,9 +242,7 @@ INT pictureCam_thorlabs::getLMemoryId()  {
 void pictureCam_thorlabs::setLMemoryId(INT lMemoryId) {
 	m_lMemoryId = lMemoryId;
 }
-/*
- * do not use this one, use the direct getters
- */
+
 Cuc480 pictureCam_thorlabs::getCamera()  {
 	return m_camera;
 }
@@ -274,7 +278,7 @@ void pictureCam_thorlabs::render()
 }
 
 /*
- * the exposure range is roughly between 0.07 - 99 ms for normal fps
+ * with default fps, the exposure range is roughly between 0.07 - 99 ms
  */
 void pictureCam_thorlabs::setExposure(int value)
 {
@@ -484,23 +488,19 @@ float angleBetween(const Point &v1, const Point &v2)
 
 	float a = dot / (len1 * len2);
 
-	//    if (a >= 1.0)
-	//        return 0.0;
-	//    else if (a <= -1.0)
-	//        return M_PI;
-	//    else
 	return acos(a) * (180.0 / M_PI); // 0..PI
 }
 
 /*
  *  I got this example for pose estimation from:
  *  https://www.youtube.com/watch?v=hUlIkHCQKmY
+ *  code @: https://github.com/foxymop/3DPoseEstimation/blob/master/src/coordinate_system.cpp
  *  In the sample code this was done in the main, so it needs to be reworked a bit
  */
 int getChessOrientation(Mat img)
 {
-	int boardHeight = 6;
-	int boardWidth = 4;
+	int boardHeight = 4;
+	int boardWidth = 3;
 	Size cbSize = Size(boardHeight,boardWidth);
 
 	vector<Point2d> imagePoints;
@@ -564,98 +564,310 @@ int getChessOrientation(Mat img)
 		p2.y = imagePoints[boardHeight*(boardWidth - 1)].y - imagePoints[0].y;
 		double a = angleBetween(p1,p2);
 		cout<<"angle is "<<a<<endl;
-		if(ndx == 0)
-			low = high = a;
-		else if(a<low)
-			low = a;
-		else if(a>high)
-			high = a;
-		avg+=a;
-		ndx++;
-		cout<<ndx<<") the lowest angle is "<<low<<", de highest angle is "<<high<<", with an average of "<<avg/ndx<<endl;
-		//find the camera extrinsic parameters
-		//If the distortion is NULL/empty, the zero distortion coefficients are assumed
-		line(img, imagePoints[0],imagePoints[boardHeight-1],w);
-		line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
-//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
-		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), cameraMatrix, distCoeffs, rvec, tvec, false ,200,8.0,200);
-		//show the pose estimation data
-		cout << fixed << setprecision(2) << "rvec = ["
-				<< rvec.at<double>(0,0) << ", "
-				<< rvec.at<double>(1,0) << ", "
-				<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
-				<< tvec.at<double>(0,0) << ", "
-				<< tvec.at<double>(1,0) << ", "
-				<< tvec.at<double>(2,0) << "]" << endl;
+		if(a>80 && a<100)
+		{
+			if(ndx == 0)
+				low = high = a;
+			else if(a<low)
+				low = a;
+			else if(a>high)
+				high = a;
+			avg+=a;
+			ndx++;
+			cout<<ndx<<") the lowest angle is "<<low<<", de highest angle is "<<high<<", with an average of "<<avg/ndx<<endl;
+			//find the camera extrinsic parameters
+			//If the distortion is NULL/empty, the zero distortion coefficients are assumed
+			line(img, imagePoints[0],imagePoints[boardHeight-1],w);
+			line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
+			//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
+			solvePnPRansac( Mat(boardPoints), Mat(imagePoints), cameraMatrix, distCoeffs, rvec, tvec, false ,200,8.0,200);
+			//show the pose estimation data
+			cout << fixed << setprecision(2) << "rvec = ["
+					<< rvec.at<double>(0,0) << ", "
+					<< rvec.at<double>(1,0) << ", "
+					<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
+					<< tvec.at<double>(0,0) << ", "
+					<< tvec.at<double>(1,0) << ", "
+					<< tvec.at<double>(2,0) << "]" << endl;
+		}
+		else
+		{
+			cout << "bad measurement"<<endl;
+			badMeh++;
+		}
 
 		return 1;
 	}
 	else
 	{
-//		cout<<"failed to detect corners"<<endl;
+		//		cout<<"failed to detect corners"<<endl;
 		return 0;
 	}
+}
+
+/*
+ * didn;t compile my opencv 2.4.10 with gpu support
+ * I should check this with my opencv 3.0.0 beta that was compiled with CUDA support
+ */
+void orbExample(Mat grey1, Mat grey2)
+{
+	ORB orb;
+	Mat desc1, desc2;
+	vector <cv::KeyPoint> kp1, kp2;
+
+	// assume images are loaded into grey1 and grey2
+
+	orb(grey1, cv::Mat(), kp1, desc1);
+	orb(grey2, cv::Mat(), kp2, desc2);
+
+	//	I like to use the GPU BruteForceMatcher class to do nearest neighbour matching, like so:
+
+	gpu::GpuMat gpu_desc1(desc1);
+	gpu::GpuMat gpu_desc2(desc2);
+	//	gpu::GpuMat gpu_ret_idx(desc2);
+	//	gpu::GpuMat gpu_ret_dist(desc2);
+	Mat ret_idx, ret_dist;
+
+	gpu::BruteForceMatcher_GPU < L2<float> > gpu_matcher;
+
+	vector< vector<DMatch> > matches;
+	gpu_matcher.knnMatch(gpu_desc1, gpu_desc2,matches, 2);
+	//	gpu_ret_idx.download(ret_idx);
+	//	gpu_ret_dist.download(ret_dist);
+	//
+	//	float ratio = 0.7f; // SIFT style feature matching
+	//	for(int i=0; i < ret_idx.rows; i++) {
+	//	  if(ret_dist.at<float>(i,0) < ret_dist.at<float>(i,1)*ratio) {
+	//	     // we got a match!
+	//	  }
+	//	}
+
+}
+
+/*
+ * I got the 2 functions below from this example:
+ * https://robospace.wordpress.com/2013/10/09/object-orientation-principal-component-analysis-opencv/
+ *
+ */
+double getOrientation(vector<Point> &pts, Mat &img)
+{
+	//Construct a buffer used by the pca analysis
+	Mat data_pts = Mat(pts.size(), 2, CV_64FC1);
+	for (int i = 0; i < data_pts.rows; ++i)
+	{
+		data_pts.at<double>(i, 0) = pts[i].x;
+		data_pts.at<double>(i, 1) = pts[i].y;
+	}
+
+	//Perform PCA analysis
+	PCA pca_analysis(data_pts, Mat(), CV_PCA_DATA_AS_ROW);
+
+	//Store the position of the object
+	Point pos = Point(pca_analysis.mean.at<double>(0, 0),
+			pca_analysis.mean.at<double>(0, 1));
+
+	//Store the eigenvalues and eigenvectors
+	vector<Point2d> eigen_vecs(2);
+	vector<double> eigen_val(2);
+	for (int i = 0; i < 2; ++i)
+	{
+		eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0),
+				pca_analysis.eigenvectors.at<double>(i, 1));
+
+		eigen_val[i] = pca_analysis.eigenvalues.at<double>(0, i);
+	}
+
+	// Draw the principal components
+	circle(img, pos, 3, CV_RGB(255, 0, 255), 2);
+	line(img, pos, pos + 0.02 * Point(eigen_vecs[0].x * eigen_val[0], eigen_vecs[0].y * eigen_val[0]) , CV_RGB(255, 255, 0));
+	line(img, pos, pos + 0.02 * Point(eigen_vecs[1].x * eigen_val[1], eigen_vecs[1].y * eigen_val[1]) , CV_RGB(0, 255, 255));
+
+	Point2d p1, p2;
+
+	p1 = 0.02 * Point(eigen_vecs[0].x * eigen_val[0], eigen_vecs[0].y * eigen_val[0]);
+	p2 = 0.02 * Point(eigen_vecs[1].x * eigen_val[1], eigen_vecs[1].y * eigen_val[1]);
+	return angleBetween(p1,p2);
+}
+
+void componentAnalysis(Mat img)
+{
+	//already got a thresholded image
+	Mat bw;//, img = imread("test_image.jpg");
+	cvtColor(img, bw, COLOR_BGR2GRAY);
+	//
+	//	// Apply thresholding;
+	//	equalizeHist( bw, bw );
+	threshold(bw, bw, 30, 255, CV_THRESH_BINARY);
+	Mat element = getStructuringElement(MORPH_RECT, Size(4, 4) );
+	dilate(bw, bw, element);
+	dilate(bw, bw, element);
+	//	element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
+	erode(bw, bw, element);
+	erode(bw, bw, element);
+
+	// Find all the contours in the thresholded image
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours(bw, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+	double a = 0, idx = 0;
+	for (size_t i = 0; i < contours.size(); ++i)
+	{
+		// Calculate the area of each contour
+		double area = contourArea(contours[i]);
+
+		// Ignore contours that are too small or too large
+		if (area < 2000|| 5000 < area) continue;
+		Rect r = boundingRect(contours[i]);
+		if (r.width <100)
+		{
+
+			// Draw each contour only for visualisation purposes
+			//		drawContours(img, contours, i, CV_RGB(255, 0, 0), 2, 8, hierarchy, 0);
+			// Find the orientation of each shape
+			a += getOrientation(contours[i], img);
+			idx++;
+		}
+	}
+	cout<<"Average angle is "<<a/idx<<endl;
+}
+
+void afine(Mat src)
+{
+	Point2f srcTri[3];
+	Point2f dstTri[3];
+
+	Mat rot_mat( 2, 3, CV_32FC1 );
+	Mat warp_mat( 2, 3, CV_32FC1 );
+	Mat warp_dst, warp_rotate_dst;
+
+
+	/// Set the dst image the same type and size as src
+	warp_dst = Mat::zeros( src.rows, src.cols, src.type() );
+
+	/// Set your 3 points to calculate the  Affine Transform
+	srcTri[0] = Point2f( 0,0 );
+	srcTri[1] = Point2f( src.cols - 1.f, 0 );
+	srcTri[2] = Point2f( 0, src.rows - 1.f );
+
+	dstTri[0] = Point2f( src.cols*0.0f, src.rows*0.33f );
+	dstTri[1] = Point2f( src.cols*0.85f, src.rows*0.25f );
+	dstTri[2] = Point2f( src.cols*0.15f, src.rows*0.7f );
+
+	/// Get the Affine Transform
+	warp_mat = getAffineTransform( srcTri, dstTri );
+
+	/// Apply the Affine Transform just found to the src image
+	warpAffine( src, warp_dst, warp_mat, warp_dst.size() );
+
+	/** Rotating the image after Warp */
+
+	/// Compute a rotation matrix with respect to the center of the image
+	Point center = Point( warp_dst.cols/2, warp_dst.rows/2 );
+	double angle = -50.0;
+	double scale = 0.6;
+
+	/// Get the rotation matrix with the specifications above
+	rot_mat = getRotationMatrix2D( center, angle, scale );
+
+	/// Rotate the warped image
+	warpAffine( warp_dst, warp_rotate_dst, rot_mat, warp_dst.size() );
+
 }
 
 /*
  * this application is not optimized
  */
 int main() {
+	/*
+	 * create the UI
+	 */
 	namedWindow( "Original", WINDOW_AUTOSIZE );
 	resizeWindow("Original",1200,950);
+	//these do not need to be made in advance
+	//	namedWindow( "result", WINDOW_AUTOSIZE );
+	//	resizeWindow("result",50,1);
+	//	namedWindow("histogram", WINDOW_AUTOSIZE );
+	//	resizeWindow("histogram",50,1);
+
+	/*
+	 * initialize the values we will be using
+	 */
 	pct = new pictureCam_thorlabs((HWND)cvGetWindowHandle("Original"));
-	namedWindow( "result", WINDOW_AUTOSIZE );
-	resizeWindow("result",50,1);
-	namedWindow("histogram", WINDOW_AUTOSIZE );
-	resizeWindow("histogram",50,1);
 	int pc = 25; 	// pixel clock values are between 5 and 40
 	//	int fps = 24;	// max and min fps are based on the pixel clock
 	int expo = 20;	// the exposure is depended of everything...
-	createTrackbar("Pixel clock", "Original", &pc, 35, on_pixelTrackbar);
-	//	createTrackbar("fps_slider", "Original", &fps, 24, on_fpsTrackbar);
-	createTrackbar("exposure_slider", "Original", &expo, 20, on_expoTrackbar);
-	//	on_trackbar(expo, pct);		//not needed is done automatically, but still here for me
-	Mat imgMat, element;//,grayImg;
+	Mat imgMat, element, grayImg;
 	IplImage* cv_image ;
 	bool running = true;
 	low = high = avg = ndx = 0;
+	cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
+
+	/*
+	 * create trackbars
+	 */
+	createTrackbar("Pixel clock", "Original", &pc, 35, on_pixelTrackbar);
+	//	createTrackbar("fps_slider", "Original", &fps, 24, on_fpsTrackbar);
+	createTrackbar("exposure_slider", "Original", &expo, 20, on_expoTrackbar);
+
+	/*
+	 * load camera parameters
+	 */
+	//	FileStorage fs;
+	//	fs.open(filename, FileStorage::READ);
+	//	// read camera matrix and distortion coefficients from file
+	//	fs["Camera_Matrix"] >> intrinsics;
+	//	fs["Distortion_Coefficients"] >> distortion;
+	//	// close the input file
+	//	fs.release();
+
 	//application loop
 	while(running)
 	{
-		pct->render();
 
+		pct->render();
+		//		cout<<"so slow ..."<<endl;
 		/*
+		 * Thorlabs does not support opencv so we need to do some of this ourselves
 		 * convert image from buffer to an image we can actually use
 		 */
-		cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
 		cvSetData(cv_image, pct->getPcImageMemory(), cv_image->widthStep);
+		//! converts old-style IplImage to the new matrix; the data is not copied by default
 		imgMat = Mat(cv_image, false);
-		cvtColor(imgMat, imgMat, CV_BGR2GRAY);
-		//grayImg = imgMat;
+		cvtColor(imgMat, grayImg, CV_BGR2GRAY);
 
-//		equalizeHist( imgMat, imgMat );		//preferably not stretched with software
-		calcHist(&imgMat);
-//		/* threshold type
-//		 * 0: Binary
-//		     1: Binary Inverted
-//		     2: Threshold Truncated
-//		     3: Threshold to Zero
-//		     4: Threshold to Zero Inverted
-//		 */
-//		threshold( imgMat, imgMat, 155, 255, 0 );
-//	    element = getStructuringElement(MORPH_RECT, Size(4, 4) );
-//	    erode(imgMat, imgMat, element);
-//	    dilate(imgMat, imgMat, element);
-//	    dilate(imgMat, imgMat, element);
-//	    erode(imgMat, imgMat, element);
-//	    element = getStructuringElement(MORPH_RECT, Size(4, 4) );
-//	    dilate(imgMat, imgMat, element);
-//	    erode(imgMat, imgMat, element);
+		//		equalizeHist( grayImg, grayImg );		//preferably not stretched with software
+		calcHist(&grayImg);
+		/* threshold type
+		 * 0: Binary
+		 * 1: Binary Inverted
+		 * 2: Threshold Truncated
+		 * 3: Threshold to Zero
+		 * 4: Threshold to Zero Inverted
+		 */
+		//		threshold( grayImg, grayImg, 30, 255, CV_THRESH_BINARY );
 
-		getChessOrientation(imgMat);
-		imshow("result", imgMat);
-//		if(ndx >= 20)
-//			running =false;
+		/*
+		 * let's do some opening and closing
+		 */
+		//		element = getStructuringElement(MORPH_RECT, Size(4, 4) );
+		//		dilate(grayImg, grayImg, element);
+		//		dilate(grayImg, grayImg, element);
+		//		//		element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
+		//		erode(grayImg, grayImg, element);
+		//		erode(grayImg, grayImg, element);
+		//		element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
+		//		erode(grayImg, grayImg, element);
+		//		dilate(grayImg, grayImg, element);
+		//		erode(grayImg, grayImg, element);
+		//		dilate(grayImg, grayImg, element);
+		//		componentAnalysis(imgMat);
+		//		orbExample(grayImg, imgMat);
+				getChessOrientation(grayImg);
+		//		imshow("result", imgMat);
+		//		detailEnhance(grayImg,grayImg);	//opencv-3.0.0 beta function
+		imshow("result", grayImg);
+		//		if(ndx >= 20)
+		//			running =false;
 		switch(waitKey(1))
 		{
 		case 27:	//esc
@@ -664,30 +876,23 @@ int main() {
 			running = false;
 			break;
 		case 's':
-//			if(getChessOrientation(imgMat))
-//			{
-//				imshow("result", imgMat);
-//				cout<<"waiting until button press"<<endl;
-//				waitKey(0);
-//			}
 			/*
-//			 * get an image from the image memory
-//			 * convert it to cv::mat
-//			 * display the image
-//			 */
-			//			cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
-			//			cvSetData(cv_image, pct->getPcImageMemory(), cv_image->widthStep);
-			//			imgMat = Mat(cv_image, false);
-			//			cvtColor(imgMat, imgMat, CV_BGR2GRAY);
-			////			equalizeHist( imgMat, imgMat );		//preferably not stretched with software
-			//			calcHist(&imgMat);
-			//			imshow("result", imgMat);
+			 * check out this code: https://github.com/MasteringOpenCV/code
+			 * from "Mastering OpenCV with Practical Computer Vision Projects by Daniel Lelis Baggio" http://image2measure.net/files/Mastering_OpenCV.pdf
+			 * chapter 2 could be the answer to my problem
+			 */
+
+
+			getChessOrientation(grayImg);
+			imshow("result", imgMat);
 			break;
 		default:
 			break;
 		}
+		if(ndx>=200)
+			running=false;
 	}
-
+	cout << "there were "<< badMeh << " bad measurements"<<endl;
 	pct->ExitCamera();
 	pct = NULL;
 	return 0;
