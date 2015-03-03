@@ -25,9 +25,15 @@ using namespace std;
 
 //probably should not define them here like this, but it makes it a lot easier for me
 pictureCam_thorlabs *pct;
-double high, low, avg, ndx, badMeh;
+double badMeh, avg;
+int ndx, u, d;
+int l, r;
 string filename = "out_camera_data.yml";
 Mat intrinsics, distortion;
+double avals[200] = {};
+double bvals[200] = {};
+double cvals[200] = {};
+double dvals[200] = {};
 
 /*
  * PictureCam_Thorlabs is basically the same as uc480Live from Thorlabs only without MFC
@@ -43,7 +49,7 @@ pictureCam_thorlabs::pictureCam_thorlabs(HWND h)
 	m_pcImageMemory = 0;// image memory - pointer to buffer
 	m_lMemoryId = 0;    // image memory - buffer ID
 	m_nDispModeSel = e_disp_mode_bitmap;
-	OpenCamera();       // open a camera handle
+	m_cameraLoaded = OpenCamera();       // open a camera handle
 }
 
 pictureCam_thorlabs::~pictureCam_thorlabs()
@@ -262,9 +268,13 @@ HWND  pictureCam_thorlabs::GetNotifyWindowHandle ()
 	return m_camera.GetNotifyWindowHandle();
 }
 
+/*
+ * different from m_camera.isInit()
+ * this checks if a camera was opened
+ */
 BOOL  pictureCam_thorlabs::IsInit()
 {
-	return m_camera.IsInit();
+	return m_cameraLoaded;
 
 }
 
@@ -449,33 +459,6 @@ void calcHist(Mat *src)
 	imshow("histogram", histImage );
 }
 
-int searchPattern(Mat img)
-{
-	cout<<"trying to find chessboard pattern"<<endl;
-	Size patternsize(5,3); //interior number of corners
-	Mat gray = img; //source image
-	vector<Point2f> corners; //this will be filled by the detected corners
-
-	//CALIB_CB_FAST_CHECK saves a lot of time on images
-	//that do not contain any chessboard corners
-	bool patternfound = findChessboardCorners(gray, patternsize, corners,
-			CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
-			+ CALIB_CB_FAST_CHECK);
-
-	if(patternfound)
-	{
-		cornerSubPix(gray, corners, Size(11, 11), Size(-1, -1),
-				TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-	}
-	else
-	{
-		cout<<"failed to detect corners"<<endl;
-		return 0;
-	}
-	drawChessboardCorners(gray, patternsize, Mat(corners), patternfound);
-	return 1;
-
-}
 /*
  * returns the angle (in degrees) between 2 points and the origin
  */
@@ -496,22 +479,32 @@ float angleBetween(const Point &v1, const Point &v2)
  *  https://www.youtube.com/watch?v=hUlIkHCQKmY
  *  code @: https://github.com/foxymop/3DPoseEstimation/blob/master/src/coordinate_system.cpp
  *  In the sample code this was done in the main, so it needs to be reworked a bit
+ *
+ *  A --- B
+ *  |     |		designed it differently but made a mistake in the order and didn't want to change it again, sorry ...
+ *  D --- C
  */
 int getChessOrientation(Mat img)
 {
-	int boardHeight = 4;
-	int boardWidth = 3;
+	int boardHeight = 5;
+	int boardWidth = 5;
 	Size cbSize = Size(boardHeight,boardWidth);
 
 	vector<Point2d> imagePoints;
+	bool found = false;
 
 	//detect chessboard corners
-	bool found = findChessboardCorners(img, cbSize, imagePoints,
-			CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
-			+ CALIB_CB_FAST_CHECK);
-	//	if(found)
-	//		cornerSubPix(img, imagePoints, Size(11, 11), Size(-1, -1),
-	//					TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+	try {
+		found = findChessboardCorners(img, cbSize, imagePoints,
+				CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
+				+ CALIB_CB_FAST_CHECK);
+		//		if(found)
+		//			cornerSubPix(img, imagePoints, Size(5, 5), Size(-1, -1),
+		//					TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+	} catch (Exception e) {
+		cout<<"we had an error here"<<e.what()<<endl;
+	}
+
 	CvScalar w = CV_RGB(255,255,255);
 	CvScalar o = CV_RGB(128,128,128);
 
@@ -531,10 +524,6 @@ int getChessOrientation(Mat img)
 		//	Mat intrinsics;
 		Mat rvec = Mat(Size(3,1), CV_64F);
 		Mat tvec = Mat(Size(3,1), CV_64F);
-
-		//set up matrices for storage
-		Mat distCoeffs = Mat::zeros(8, 1, CV_64F);
-		Mat cameraMatrix = Mat::eye(3, 3, CV_64F);
 
 		//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
 		vector<Point3d> boardPoints, framePoints;
@@ -557,7 +546,6 @@ int getChessOrientation(Mat img)
 		//calculate the angle between the last point in the first row and the last point in the first collum.
 		//this should be 90 degrees, however since my camera is angled at 45 degrees I should keep this into account
 		Point2d p1, p2;
-
 		p1.x = imagePoints[boardHeight-1].x - imagePoints[0].x;
 		p1.y = imagePoints[boardHeight-1].y - imagePoints[0].y;
 		p2.x = imagePoints[boardHeight*(boardWidth - 1)].x - imagePoints[0].x;
@@ -566,29 +554,88 @@ int getChessOrientation(Mat img)
 		cout<<"angle is "<<a<<endl;
 		if(a>80 && a<100)
 		{
-			if(ndx == 0)
-				low = high = a;
-			else if(a<low)
-				low = a;
-			else if(a>high)
-				high = a;
-			avg+=a;
+			//if-statement magic ....
+			if(p1.x<20 && p1.x>-20)	//'long arm' vertical
+			{
+				if(p2.x>0 && p1.y<0)	//A,
+				{
+					cout<<"D1"<<endl;
+					dvals[l] = a;
+					l++;
+				}
+				else if(p2.x>0 && p1.y>0) //D,
+				{
+					cout<<"A1"<<endl;
+					avals[u] = a;
+					u++;
+				}
+				else if(p2.x<0 && p1.y<0)	//C,
+				{
+					cout<<"C1"<<endl;
+					cvals[d] = a;
+					d++;
+				}
+				else if(p2.x<0 && p1.y>0) //B,
+				{
+					cout<<"B1"<<endl;
+					bvals[r] = a;
+					r++;
+				}
+			}
+			else	//'long arm' horizontal
+			{
+				if(p1.x>0 && p2.y<0)	//A, 'long arm' right, 'short arm' down
+				{
+					cout<<"D2"<<endl;
+					dvals[l] = a;
+					l++;
+				}
+				else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
+				{
+					cout<<"A2"<<endl;
+					avals[u] = a;
+					u++;
+				}
+				else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' down
+				{
+					cout<<"C2"<<endl;
+					cvals[d] = a;
+					d++;
+				}
+				else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' up
+				{
+					cout<<"B2"<<endl;
+					bvals[r] = a;
+					r++;
+				}
+			}
 			ndx++;
-			cout<<ndx<<") the lowest angle is "<<low<<", de highest angle is "<<high<<", with an average of "<<avg/ndx<<endl;
 			//find the camera extrinsic parameters
 			//If the distortion is NULL/empty, the zero distortion coefficients are assumed
 			line(img, imagePoints[0],imagePoints[boardHeight-1],w);
 			line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
 			//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
-			solvePnPRansac( Mat(boardPoints), Mat(imagePoints), cameraMatrix, distCoeffs, rvec, tvec, false ,200,8.0,200);
-			//show the pose estimation data
-			cout << fixed << setprecision(2) << "rvec = ["
+			solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+			//			//show the pose estimation data
+			cout << fixed << setprecision(4) << "rvec = ["
 					<< rvec.at<double>(0,0) << ", "
 					<< rvec.at<double>(1,0) << ", "
 					<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
 					<< tvec.at<double>(0,0) << ", "
 					<< tvec.at<double>(1,0) << ", "
 					<< tvec.at<double>(2,0) << "]" << endl;
+			Mat rotationMatrix;
+			Rodrigues(rvec,rotationMatrix);
+			cout << "\nrotation matrix:\n["
+					<< rotationMatrix.at<double>(0,0) << ", "
+					<< rotationMatrix.at<double>(1,0) << ", "
+					<< rotationMatrix.at<double>(2,0) << "] \n["
+					<< rotationMatrix.at<double>(0,1) << ", "
+					<< rotationMatrix.at<double>(1,1) << ", "
+					<< rotationMatrix.at<double>(2,1) << "] \n["
+					<< rotationMatrix.at<double>(0,2) << ", "
+					<< rotationMatrix.at<double>(1,2) << ", "
+					<< rotationMatrix.at<double>(2,2) << "] \n"<< endl;
 		}
 		else
 		{
@@ -603,175 +650,6 @@ int getChessOrientation(Mat img)
 		//		cout<<"failed to detect corners"<<endl;
 		return 0;
 	}
-}
-
-/*
- * didn;t compile my opencv 2.4.10 with gpu support
- * I should check this with my opencv 3.0.0 beta that was compiled with CUDA support
- */
-void orbExample(Mat grey1, Mat grey2)
-{
-	ORB orb;
-	Mat desc1, desc2;
-	vector <cv::KeyPoint> kp1, kp2;
-
-	// assume images are loaded into grey1 and grey2
-
-	orb(grey1, cv::Mat(), kp1, desc1);
-	orb(grey2, cv::Mat(), kp2, desc2);
-
-	//	I like to use the GPU BruteForceMatcher class to do nearest neighbour matching, like so:
-
-	gpu::GpuMat gpu_desc1(desc1);
-	gpu::GpuMat gpu_desc2(desc2);
-	//	gpu::GpuMat gpu_ret_idx(desc2);
-	//	gpu::GpuMat gpu_ret_dist(desc2);
-	Mat ret_idx, ret_dist;
-
-	gpu::BruteForceMatcher_GPU < L2<float> > gpu_matcher;
-
-	vector< vector<DMatch> > matches;
-	gpu_matcher.knnMatch(gpu_desc1, gpu_desc2,matches, 2);
-	//	gpu_ret_idx.download(ret_idx);
-	//	gpu_ret_dist.download(ret_dist);
-	//
-	//	float ratio = 0.7f; // SIFT style feature matching
-	//	for(int i=0; i < ret_idx.rows; i++) {
-	//	  if(ret_dist.at<float>(i,0) < ret_dist.at<float>(i,1)*ratio) {
-	//	     // we got a match!
-	//	  }
-	//	}
-
-}
-
-/*
- * I got the 2 functions below from this example:
- * https://robospace.wordpress.com/2013/10/09/object-orientation-principal-component-analysis-opencv/
- *
- */
-double getOrientation(vector<Point> &pts, Mat &img)
-{
-	//Construct a buffer used by the pca analysis
-	Mat data_pts = Mat(pts.size(), 2, CV_64FC1);
-	for (int i = 0; i < data_pts.rows; ++i)
-	{
-		data_pts.at<double>(i, 0) = pts[i].x;
-		data_pts.at<double>(i, 1) = pts[i].y;
-	}
-
-	//Perform PCA analysis
-	PCA pca_analysis(data_pts, Mat(), CV_PCA_DATA_AS_ROW);
-
-	//Store the position of the object
-	Point pos = Point(pca_analysis.mean.at<double>(0, 0),
-			pca_analysis.mean.at<double>(0, 1));
-
-	//Store the eigenvalues and eigenvectors
-	vector<Point2d> eigen_vecs(2);
-	vector<double> eigen_val(2);
-	for (int i = 0; i < 2; ++i)
-	{
-		eigen_vecs[i] = Point2d(pca_analysis.eigenvectors.at<double>(i, 0),
-				pca_analysis.eigenvectors.at<double>(i, 1));
-
-		eigen_val[i] = pca_analysis.eigenvalues.at<double>(0, i);
-	}
-
-	// Draw the principal components
-	circle(img, pos, 3, CV_RGB(255, 0, 255), 2);
-	line(img, pos, pos + 0.02 * Point(eigen_vecs[0].x * eigen_val[0], eigen_vecs[0].y * eigen_val[0]) , CV_RGB(255, 255, 0));
-	line(img, pos, pos + 0.02 * Point(eigen_vecs[1].x * eigen_val[1], eigen_vecs[1].y * eigen_val[1]) , CV_RGB(0, 255, 255));
-
-	Point2d p1, p2;
-
-	p1 = 0.02 * Point(eigen_vecs[0].x * eigen_val[0], eigen_vecs[0].y * eigen_val[0]);
-	p2 = 0.02 * Point(eigen_vecs[1].x * eigen_val[1], eigen_vecs[1].y * eigen_val[1]);
-	return angleBetween(p1,p2);
-}
-
-void componentAnalysis(Mat img)
-{
-	//already got a thresholded image
-	Mat bw;//, img = imread("test_image.jpg");
-	cvtColor(img, bw, COLOR_BGR2GRAY);
-	//
-	//	// Apply thresholding;
-	//	equalizeHist( bw, bw );
-	threshold(bw, bw, 30, 255, CV_THRESH_BINARY);
-	Mat element = getStructuringElement(MORPH_RECT, Size(4, 4) );
-	dilate(bw, bw, element);
-	dilate(bw, bw, element);
-	//	element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
-	erode(bw, bw, element);
-	erode(bw, bw, element);
-
-	// Find all the contours in the thresholded image
-	vector<vector<Point> > contours;
-	vector<Vec4i> hierarchy;
-	findContours(bw, contours, hierarchy, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-	double a = 0, idx = 0;
-	for (size_t i = 0; i < contours.size(); ++i)
-	{
-		// Calculate the area of each contour
-		double area = contourArea(contours[i]);
-
-		// Ignore contours that are too small or too large
-		if (area < 2000|| 5000 < area) continue;
-		Rect r = boundingRect(contours[i]);
-		if (r.width <100)
-		{
-
-			// Draw each contour only for visualisation purposes
-			//		drawContours(img, contours, i, CV_RGB(255, 0, 0), 2, 8, hierarchy, 0);
-			// Find the orientation of each shape
-			a += getOrientation(contours[i], img);
-			idx++;
-		}
-	}
-	cout<<"Average angle is "<<a/idx<<endl;
-}
-
-void afine(Mat src)
-{
-	Point2f srcTri[3];
-	Point2f dstTri[3];
-
-	Mat rot_mat( 2, 3, CV_32FC1 );
-	Mat warp_mat( 2, 3, CV_32FC1 );
-	Mat warp_dst, warp_rotate_dst;
-
-
-	/// Set the dst image the same type and size as src
-	warp_dst = Mat::zeros( src.rows, src.cols, src.type() );
-
-	/// Set your 3 points to calculate the  Affine Transform
-	srcTri[0] = Point2f( 0,0 );
-	srcTri[1] = Point2f( src.cols - 1.f, 0 );
-	srcTri[2] = Point2f( 0, src.rows - 1.f );
-
-	dstTri[0] = Point2f( src.cols*0.0f, src.rows*0.33f );
-	dstTri[1] = Point2f( src.cols*0.85f, src.rows*0.25f );
-	dstTri[2] = Point2f( src.cols*0.15f, src.rows*0.7f );
-
-	/// Get the Affine Transform
-	warp_mat = getAffineTransform( srcTri, dstTri );
-
-	/// Apply the Affine Transform just found to the src image
-	warpAffine( src, warp_dst, warp_mat, warp_dst.size() );
-
-	/** Rotating the image after Warp */
-
-	/// Compute a rotation matrix with respect to the center of the image
-	Point center = Point( warp_dst.cols/2, warp_dst.rows/2 );
-	double angle = -50.0;
-	double scale = 0.6;
-
-	/// Get the rotation matrix with the specifications above
-	rot_mat = getRotationMatrix2D( center, angle, scale );
-
-	/// Rotate the warped image
-	warpAffine( warp_dst, warp_rotate_dst, rot_mat, warp_dst.size() );
-
 }
 
 /*
@@ -798,8 +676,8 @@ int main() {
 	int expo = 20;	// the exposure is depended of everything...
 	Mat imgMat, element, grayImg;
 	IplImage* cv_image ;
-	bool running = true;
-	low = high = avg = ndx = 0;
+	bool running = false;
+	ndx = u = d = l = r =  0;
 	cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
 
 	/*
@@ -808,7 +686,19 @@ int main() {
 	createTrackbar("Pixel clock", "Original", &pc, 35, on_pixelTrackbar);
 	//	createTrackbar("fps_slider", "Original", &fps, 24, on_fpsTrackbar);
 	createTrackbar("exposure_slider", "Original", &expo, 20, on_expoTrackbar);
+	if( pct->IsInit() )
+	{
+		//set up matrices for storage
+		distortion = Mat::zeros(5, 1, CV_64F);
+		intrinsics = Mat::eye(3, 3, CV_64F);
 
+		//		Mat M = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
+		distortion = (Mat_<double>(5,1) << 7.2914041963856420e+000, 2.0979596618049214e+000, -2.3690347009888141e-001, 5.1098820884635382e-002, 1.4682521220954941e-003 );
+		intrinsics =  (Mat_<double>(3,3) << 2.0529114902590052e+004, 0., 6.3928941571612074e+002, 0.,
+				2.5657205522615815e+004, 5.1836001554552104e+002, 0., 0., 1.) ;
+
+		running = true;
+	}
 	/*
 	 * load camera parameters
 	 */
@@ -823,7 +713,8 @@ int main() {
 	//application loop
 	while(running)
 	{
-
+		if( !pct->IsInit() )
+			break;
 		pct->render();
 		//		cout<<"so slow ..."<<endl;
 		/*
@@ -862,7 +753,8 @@ int main() {
 		//		dilate(grayImg, grayImg, element);
 		//		componentAnalysis(imgMat);
 		//		orbExample(grayImg, imgMat);
-				getChessOrientation(grayImg);
+		getChessOrientation(grayImg);
+		//cout<<ndx<<"+"<<endl;
 		//		imshow("result", imgMat);
 		//		detailEnhance(grayImg,grayImg);	//opencv-3.0.0 beta function
 		imshow("result", grayImg);
@@ -875,24 +767,70 @@ int main() {
 			cout << "Closing application." << endl;
 			running = false;
 			break;
-		case 's':
-			/*
-			 * check out this code: https://github.com/MasteringOpenCV/code
-			 * from "Mastering OpenCV with Practical Computer Vision Projects by Daniel Lelis Baggio" http://image2measure.net/files/Mastering_OpenCV.pdf
-			 * chapter 2 could be the answer to my problem
-			 */
-
-
-			getChessOrientation(grayImg);
-			imshow("result", imgMat);
-			break;
+			//		case 's':
+			//			/*
+			//			 * check out this code: https://github.com/MasteringOpenCV/code
+			//			 * from "Mastering OpenCV with Practical Computer Vision Projects by Daniel Lelis Baggio" http://image2measure.net/files/Mastering_OpenCV.pdf
+			//			 * chapter 2 could be the answer to my problem
+			//			 */
+			//
+			//
+			//			getChessOrientation(grayImg);
+			//			imshow("result", imgMat);
+			//			break;
 		default:
 			break;
 		}
 		if(ndx>=200)
 			running=false;
 	}
-	cout << "there were "<< badMeh << " bad measurements"<<endl;
+	if(u!=0)
+	{
+		avg = 0;
+		for(int i = 0; i<u; i++)
+		{
+			cout << fixed <<setprecision(4)<< avals[i]<<"\t";
+			avg += avals[i];
+		}
+		cout<<"\nThe average angle for A is "<<avg/u<<"\n"<<endl;
+	}
+
+	if(r!=0)
+	{
+		avg = 0;
+		for(int i = 0; i<r; i++)
+		{
+			cout << fixed <<setprecision(4)<< bvals[i]<<"\t";
+			avg += bvals[i];
+		}
+		cout<<"\nThe average angle for B is "<<avg/r<<"\n"<<endl;
+	}
+
+	if(d!=0)
+	{
+		avg = 0;
+		for(int i = 0; i<d; i++)
+		{
+			cout << fixed <<setprecision(4)<< cvals[i]<<"\t";
+			avg += cvals[i];
+		}
+		cout<<"\nThe average angle for C is "<<avg/d<<"\n"<<endl;
+	}
+
+	if(l!=0)
+	{
+		avg = 0;
+		for(int i = 0; i<l; i++)
+		{
+			cout << fixed <<setprecision(4)<< dvals[i]<<"\t";
+			avg += dvals[i];
+		}
+		cout<<"\nThe average angle for D is "<<avg/l<<"\n"<<endl;
+	}
+
+	if(ndx!=0)
+		cout << "there were "<< badMeh << " bad measurements"<<endl;
+
 	pct->ExitCamera();
 	pct = NULL;
 	return 0;

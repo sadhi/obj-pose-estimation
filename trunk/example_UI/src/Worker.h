@@ -15,7 +15,11 @@
   #include <wx/wx.h>
 #endif //precompiled headers
 
-#include "example_UI.hpp"
+#include <opencv2/core/core.hpp>
+#include "ui/MyFrame.h"
+#include "vision/pictureCam_thorlabs.hpp"
+
+class MyFrame;
 
 class Worker : public wxThread{
 public:
@@ -25,10 +29,12 @@ public:
 	// thread entry point
 	virtual void *Entry();
 	virtual void OnExit();
+	void calcHist(cv::Mat*);
 
 private:
 	MyFrame			*m_pFrame;
 	unsigned char	m_bLife;
+	pictureCam_thorlabs *pct;
 };
 
 #endif /* WORKER_H_ */

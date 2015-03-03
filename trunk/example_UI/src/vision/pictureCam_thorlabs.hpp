@@ -11,7 +11,7 @@
 #include <windows.h>
 #include "uc480class.h"
 
-typedef enum _disp_mode
+enum _disp_mode
 {
 	e_disp_mode_bitmap = 0,
 	e_disp_mode_direct3D
