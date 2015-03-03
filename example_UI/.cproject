@@ -27,10 +27,11 @@
 								<option id="gnu.cpp.compiler.option.include.paths.1621027094" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;../../../../wxWidgets-3.0.2/include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;../../../../wxWidgets-3.0.2/build-release/lib/wx/include/msw-unicode-3.0&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;../../../../opencv-3.0.0/build/include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;D:\Users\sadhi\Documents\Visual Studio 2013\Projects\Thorlabs Samples\include&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.preprocessor.def.1413265341" name="Defined symbols (-D)" superClass="gnu.cpp.compiler.option.preprocessor.def" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__WXMSW__"/>
-									<listOptionValue builtIn="false" value="_UNICODE"/>
 									<listOptionValue builtIn="false" value="WXUSINGDLL"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1597552559" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
@@ -38,20 +39,42 @@
 							<tool command="gcc" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GCCErrorParser" id="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug.249848778" name="GCC C Compiler" superClass="cdt.managedbuild.tool.gnu.c.compiler.mingw.exe.debug">
 								<option defaultValue="gnu.c.optimization.level.none" id="gnu.c.compiler.mingw.exe.debug.option.optimization.level.511652462" name="Optimization Level" superClass="gnu.c.compiler.mingw.exe.debug.option.optimization.level" valueType="enumerated"/>
 								<option id="gnu.c.compiler.mingw.exe.debug.option.debugging.level.2107686083" name="Debug Level" superClass="gnu.c.compiler.mingw.exe.debug.option.debugging.level" value="gnu.c.debugging.level.max" valueType="enumerated"/>
+								<option id="gnu.c.compiler.option.include.paths.388128374" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" valueType="includePath">
+									<listOptionValue builtIn="false" value="&quot;D:\Users\sadhi\Documents\Visual Studio 2013\Projects\Thorlabs Samples\include&quot;"/>
+								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.c.compiler.input.1766188525" superClass="cdt.managedbuild.tool.gnu.c.compiler.input"/>
 							</tool>
 							<tool id="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug.1049053195" name="MinGW C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.mingw.exe.debug"/>
 							<tool command="g++" commandLinePattern="${COMMAND} ${FLAGS} ${OUTPUT_FLAG} ${OUTPUT_PREFIX}${OUTPUT} ${INPUTS}" errorParsers="org.eclipse.cdt.core.GLDErrorParser" id="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug.1486787950" name="MinGW C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.mingw.exe.debug">
 								<option id="gnu.cpp.link.option.libs.2060841357" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" value="Ole32"/>
 									<listOptionValue builtIn="false" value="libwx_mswu_core-3.0"/>
 									<listOptionValue builtIn="false" value="libwx_baseu-3.0"/>
 									<listOptionValue builtIn="false" value="libwx_mswu_adv-3.0"/>
 									<listOptionValue builtIn="false" value="libwx_mswu_aui-3.0"/>
 									<listOptionValue builtIn="false" value="libwx_mswu_gl-3.0"/>
 									<listOptionValue builtIn="false" value="libwx_mswu_media-3.0"/>
+									<listOptionValue builtIn="false" value="libopencv_core300"/>
+									<listOptionValue builtIn="false" value="libopencv_highgui300"/>
+									<listOptionValue builtIn="false" value="libopencv_imgproc300"/>
+									<listOptionValue builtIn="false" value="libopencv_imgcodecs300"/>
+									<listOptionValue builtIn="false" value="libopencv_photo300"/>
+									<listOptionValue builtIn="false" value="libopencv_video300"/>
+									<listOptionValue builtIn="false" value="libopencv_videoio300"/>
+									<listOptionValue builtIn="false" value="libopencv_features2d300"/>
+									<listOptionValue builtIn="false" value="libopencv_flann300"/>
+									<listOptionValue builtIn="false" value="libopencv_shape300"/>
+									<listOptionValue builtIn="false" value="libopencv_calib3d300"/>
+									<listOptionValue builtIn="false" value="libopencv_objdetect300"/>
+									<listOptionValue builtIn="false" value="libopencv_superres300"/>
+									<listOptionValue builtIn="false" value="uc480"/>
+									<listOptionValue builtIn="false" value="uc480_tools"/>
 								</option>
 								<option id="gnu.cpp.link.option.paths.940239026" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="&quot;../../../../wxWidgets-3.0.2/build-release/lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;../../../../opencv-3.0.0/cmake/lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;D:\Users\sadhi\Documents\Visual Studio 2013\Projects\Thorlabs Samples\lib&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;C:\Program Files (x86)\Microsoft SDKs\Windows\v7.1A\Lib&quot;"/>
 								</option>
 								<inputType id="cdt.managedbuild.tool.gnu.cpp.linker.input.1857870776" superClass="cdt.managedbuild.tool.gnu.cpp.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
