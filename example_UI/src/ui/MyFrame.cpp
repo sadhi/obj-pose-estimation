@@ -105,8 +105,8 @@ void MyFrame::createGUIContent()
 	wxBoxSizer *vbox = new wxBoxSizer(wxVERTICAL);
 
 	m_view1 = new CameraView( m_pMainPanel, wxPoint(-1,-1), wxSize(1280, 1024) );
-	m_view2 = new CameraView( m_pMainPanel, wxPoint(-1,-1), wxSize(1280, 1024) );
-	m_hist = new CameraView( m_pMainPanel, wxPoint(-1,-1), wxSize(1024, 400) );
+	m_view2 = new CameraView(  m_pMainPanel, wxPoint(-1,-1), wxSize(1280, 1024) );
+	m_hist = new CameraView(  m_pMainPanel, wxPoint(-1,-1), wxSize(1024, 400) );
 	m_slider = new wxSlider(m_pMainPanel, -1, 0, -100, 100, wxPoint(-1,-1), wxSize(-1,-1), wxSL_VERTICAL | wxSL_LABELS | wxSL_INVERSE);
 	wxPanel * panel1 = new wxPanel(m_pMainPanel, -1);
 	wxPanel * panel2 = new wxPanel(m_pMainPanel, -1);
@@ -173,6 +173,10 @@ void MyFrame::OnStart(wxCommandEvent& WXUNUSED(event))
 			"About wxWidgets minimal sample",
 			wxOK | wxICON_INFORMATION,
 			this);
+	if(m_pWorker != NULL)
+		m_pWorker->Run();
+	else
+		std::cout<<"No active workerthread"<<std::endl;
 }
 
 void MyFrame::OnStop(wxCommandEvent& WXUNUSED(event))
@@ -182,6 +186,7 @@ void MyFrame::OnStop(wxCommandEvent& WXUNUSED(event))
 			"About wxWidgets minimal sample",
 			wxOK | wxICON_INFORMATION,
 			this);
+//	m_pWorker->Exit();
 }
 
 

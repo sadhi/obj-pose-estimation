@@ -19,6 +19,8 @@
 #include "ui/MyFrame.h"
 #include "vision/pictureCam_thorlabs.hpp"
 
+#include "opencv2/videoio/videoio_c.h"
+
 class MyFrame;
 
 class Worker : public wxThread{
@@ -35,6 +37,9 @@ private:
 	MyFrame			*m_pFrame;
 	unsigned char	m_bLife;
 	pictureCam_thorlabs *pct;
+	IplImage* cv_image;
+	cv::Mat distortion;
+	cv::Mat intrinsics;
 };
 
 #endif /* WORKER_H_ */

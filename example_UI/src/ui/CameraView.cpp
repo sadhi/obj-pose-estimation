@@ -25,13 +25,21 @@
 
 using namespace cv;
 
+// implement message map
+BEGIN_EVENT_TABLE(CameraView, wxWindow)
+	EVT_PAINT( CameraView::OnPaint )
+	EVT_SIZE( CameraView::OnSize )
+END_EVENT_TABLE()
+
 CameraView::CameraView(wxWindow *frame, const wxPoint& pos, const wxSize& size ):
 wxWindow(frame, -1, pos, size, wxSIMPLE_BORDER )
 {
 	// set my canvas width/height
 		m_nWidth = size.GetWidth( );
 		m_nHeight = size.GetHeight( );
-
+		m_bDrawing = false;
+//		image.Clear();
+		m_bNewImage = false;
 }
 
 CameraView::~CameraView() {
@@ -92,32 +100,22 @@ void CameraView::Draw( wxDC& dc )
 // Input:	nothing
 // Output:	nothing
 ////////////////////////////////////////////////////////////////////
-void CameraView::DrawCam( Mat* img )
+void CameraView::DrawCam( Mat* img)
 {
 //	return;
 	if( m_bDrawing ) return;
 	m_bDrawing = true;
-	int i = 0;
-
+//	int i = 0;
 	// if there was an image then we need to update view
     if( img )
     {
-        Mat pDstImg = img->clone(); //m_Canvas.GetImage();
+//    	cv::Mat tempIm = img->clone();
 
-		int nCamWidth = m_nWidth;
-		int nCamHeight = m_nHeight;
-
-		// draw a rectangle
-		rectangle( pDstImg,
-				 	Point(10,10),
-					Point( nCamWidth-10, nCamHeight-10 ),
-					Scalar( 0,255,0 ) );
-
-
-		// process image from opencv to wxwidgets
-		wxImage pWxImg = wxImage( nCamWidth, nCamHeight, pDstImg.data, TRUE );
-		// convert to bitmap to be used by the window to draw
-		m_pBitmap = wxBitmap( pWxImg.Scale(m_nWidth, m_nHeight) );
+    	image = wxImage( img->cols, img->rows, img->data, true );
+//    	std::cout<<image.IsOk()<<std::endl;
+    	// convert to bitmap to be used by the window to draw
+    	wxImage tmp = image.Scale(m_nWidth, m_nHeight);
+    	m_pBitmap = wxBitmap( tmp );
 
 		m_bNewImage = true;
 		m_bDrawing = false;
@@ -125,8 +123,8 @@ void CameraView::DrawCam( Mat* img )
 		Refresh( FALSE );
 
 		Update( );
-
-		pDstImg = NULL;
+//		image.Clear();
+//		pDstImg = NULL;
 
     }
 
@@ -142,4 +140,22 @@ void CameraView::DrawCam( Mat* img )
 void CameraView::CheckUpdate()
 {
 	Update( );
+}
+
+
+////////////////////////////////////////////////////////////////////
+// Method:	OnSize
+// Class:	CameraView
+// Purose:	adjust on windows resize
+// Input:	reference to size event
+// Output:	nothing
+////////////////////////////////////////////////////////////////////
+void CameraView::OnSize( wxSizeEvent& event )
+{
+	int nWidth = event.GetSize().GetWidth();
+	int nHeight = event.GetSize().GetHeight();
+
+	m_nWidth = nWidth;
+	m_nHeight = nHeight;
+
 }
