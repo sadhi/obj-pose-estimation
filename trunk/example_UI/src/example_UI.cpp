@@ -58,7 +58,7 @@ bool MyApp::OnInit()
 	// few common command-line options but it could be do more in the future
 	if ( !wxApp::OnInit() )
 		return false;
-
+//	wxInitAllImageHandlers();
 	// create the main application window
 	MyFrame *frame = new MyFrame("Minimal wxWidgets App", wxPoint(-1, -1), wxSize(1280, 720));
 	//	frame->SetSize(1280, 720);

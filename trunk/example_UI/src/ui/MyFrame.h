@@ -10,6 +10,7 @@
 
 #include "../Worker.h"
 #include "CameraView.h"
+#include "ImagePanel.h"
 
 // IDs for the controls and the menu commands
 enum

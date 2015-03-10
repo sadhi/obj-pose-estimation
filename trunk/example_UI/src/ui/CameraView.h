@@ -26,15 +26,19 @@ public:
 	void DrawCam( cv::Mat* img );
 
 protected:
+	DECLARE_EVENT_TABLE()
+
 	int m_nWidth;
 	int m_nHeight;
 	wxBitmap	m_pBitmap;
+	wxImage image;
 
 	bool	m_bDrawing;
 	bool	m_bNewImage;
 
 private:
 	void OnPaint( wxPaintEvent& event );
+	void OnSize( wxSizeEvent& event );
 	void Draw( wxDC& dc );
 };
 
