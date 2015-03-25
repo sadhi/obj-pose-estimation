@@ -24,6 +24,7 @@ EVT_MENU(Minimal_Quit,  MyFrame::OnQuit)
 EVT_MENU(Minimal_About, MyFrame::OnAbout)
 EVT_MENU(Minimal_Start, MyFrame::OnStart)
 EVT_MENU(Minimal_Stop, MyFrame::OnStop)
+EVT_SLIDER(ID_Slider, MyFrame::OnScroll)
 //EVT_SIZE(MyFrame::OnSize)
 //EVT_SIZING(MyFrame::OnResize)
 wxEND_EVENT_TABLE()
@@ -32,7 +33,6 @@ wxEND_EVENT_TABLE()
 // ----------------------------------------------------------------------------
 // main frame
 // ----------------------------------------------------------------------------
-//TODO: might have to put MyFrame in a separate file
 // frame constructor
 MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size,  wxMINIMIZE_BOX | \
@@ -55,9 +55,11 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 MyFrame::~MyFrame( )
 {
 	// tell first to the worker to exit
-	m_pWorker->Delete( );
-	m_pWorker = NULL;
-
+	if(m_pWorker != NULL)
+	{
+		m_pWorker->Delete( );
+		m_pWorker = NULL;
+	}
 //	m_view1 = NULL;
 //	m_view2 = NULL;
 //	pLiveCameraBox = NULL;
@@ -91,7 +93,6 @@ void MyFrame::createMenu()
 	SetMenuBar(menuBar);
 }
 
-//TODO: this stuff should dynamically change depending on the screen resolution!!!
 void MyFrame::createGUIContent()
 {
 	int width, height;
@@ -107,8 +108,8 @@ void MyFrame::createGUIContent()
 	m_view1 = new CameraView( m_pMainPanel, wxPoint(-1,-1), wxSize(1280, 1024) );
 	m_view2 = new CameraView(  m_pMainPanel, wxPoint(-1,-1), wxSize(1280, 1024) );
 	m_hist = new CameraView(  m_pMainPanel, wxPoint(-1,-1), wxSize(1024, 400) );
-	m_slider = new wxSlider(m_pMainPanel, -1, 0, -100, 100, wxPoint(-1,-1), wxSize(-1,-1), wxSL_VERTICAL | wxSL_LABELS | wxSL_INVERSE);
-	wxPanel * panel1 = new wxPanel(m_pMainPanel, -1);
+	m_slider = new wxSlider(m_pMainPanel, ID_Slider, 0, -100, 100, wxPoint(-1,-1), wxSize(-1,-1), wxSL_VERTICAL | wxSL_LABELS | wxSL_INVERSE);
+//	wxPanel * panel1 = new wxPanel(m_pMainPanel, -1);
 	wxPanel * panel2 = new wxPanel(m_pMainPanel, -1);
 
 	//create the 2 identical collums
@@ -116,18 +117,44 @@ void MyFrame::createGUIContent()
 
 	//create a horizontal box that will hold the items in col=1, row=1
 	wxBoxSizer *hbox = new wxBoxSizer(wxHORIZONTAL);
-	hbox->Add(m_view1, 0, wxEXPAND | wxSHAPED | wxALL, 10);
+	hbox->Add(m_view2, 0, wxEXPAND | wxSHAPED | wxALL, 10);
 	hbox->Add(m_slider, 0, wxEXPAND | wxSHAPED | wxALL, 10);
 
 	//create the 2 identical rows and add items to them
 	wxGridSizer *gsv1 = new wxGridSizer(2, 1, 5, 5);
-	gsv1->Add(hbox, 0, wxEXPAND );
-	gsv1->Add(m_view2,0, wxEXPAND | wxSHAPED | wxALL, 10);
+	gsv1->Add(m_view1, 0, wxEXPAND | wxSHAPED | wxALL, 10);
+	gsv1->Add(hbox,0, wxEXPAND , 10);
 
 	//create the 3 identical rows and add items to them
 	wxGridSizer *gsv2 = new wxGridSizer(3, 1, 5, 5);
 	gsv2->Add(m_hist,0, wxEXPAND | wxSHAPED | wxALL, 10);
-	gsv2->Add(panel1,0, wxEXPAND);
+
+	xTxt1 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+	xTxt2 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+	yTxt1 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+	yTxt2 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+	zTxt1 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+	zTxt2 = new wxStaticText(m_pMainPanel, -1, wxT("0"));
+
+
+	wxGridSizer * gsd = new wxGridSizer(3, 4, 3, 3);
+	//row 1
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("")), 0, wxEXPAND);
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("X")), 0, wxEXPAND);
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("Y")), 0, wxEXPAND);
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("Z")), 0, wxEXPAND);
+	//row 2
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("Item 1")), 0, wxEXPAND);
+	gsd->Add(xTxt1, 0, wxEXPAND);
+	gsd->Add(yTxt1, 0, wxEXPAND);
+	gsd->Add(zTxt1, 0, wxEXPAND);
+	//row 3
+	gsd->Add(new wxStaticText(m_pMainPanel, -1, wxT("Item 2")), 0, wxEXPAND);
+	gsd->Add(xTxt2, 0, wxEXPAND);
+	gsd->Add(yTxt2, 0, wxEXPAND);
+	gsd->Add(zTxt2, 0, wxEXPAND);
+
+	gsv2->Add(gsd,0, wxEXPAND);
 	gsv2->Add(panel2,0, wxEXPAND);
 
 	//add items to the collums
@@ -145,6 +172,7 @@ void MyFrame::createGUIContent()
 
 void MyFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
 {
+	SetStatusText("Closing");
 	// true is to force the frame to close
 	Close(true);
 }
@@ -169,12 +197,18 @@ void MyFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
 void MyFrame::OnStart(wxCommandEvent& WXUNUSED(event))
 {
 
-	wxMessageBox("This should start a measurement",
-			"About wxWidgets minimal sample",
-			wxOK | wxICON_INFORMATION,
-			this);
+//	wxMessageBox("This should start a measurement",
+//			"About wxWidgets minimal sample",
+//			wxOK | wxICON_INFORMATION,
+//			this);
 	if(m_pWorker != NULL)
+	{
 		m_pWorker->Run();
+		std::cout<<"test"<<std::endl;
+		int i =  m_view2->GetSize().y/2 - m_slider->GetValue();
+		m_view2->setLineHight(i);
+
+	}
 	else
 		std::cout<<"No active workerthread"<<std::endl;
 }
@@ -189,6 +223,16 @@ void MyFrame::OnStop(wxCommandEvent& WXUNUSED(event))
 //	m_pWorker->Exit();
 }
 
+void MyFrame::OnScroll(wxCommandEvent& event)
+{
+	int i =  m_view2->GetSize().y/2 - m_slider->GetValue();
+	m_view2->setLineHight(i);
+	if(m_pWorker != NULL)
+	{
+		if(m_pWorker->IsRunning())
+			m_pWorker->getROI()->y = i;
+	}
+}
 
 void MyFrame::setWorker(Worker* w)
 {
@@ -208,4 +252,45 @@ CameraView* MyFrame::getGrayWindow()
 CameraView* MyFrame::getHistWindow()
 {
 	return m_hist;
+}
+
+void MyFrame::setX1Txt(wxString s)
+{
+	xTxt1->SetLabel(s);
+	Layout();
+}
+
+void MyFrame::setY1Txt(wxString s)
+{
+	yTxt1->SetLabel(s);
+	Layout();
+}
+
+void MyFrame::setZ1Txt(wxString s)
+{
+	zTxt1->SetLabel(s);
+	Layout();
+}
+
+void MyFrame::setX2Txt(wxString s)
+{
+	xTxt2->SetLabel(s);
+	Layout();
+}
+
+void MyFrame::setY2Txt(wxString s)
+{
+	yTxt2->SetLabel(s);
+	Layout();
+}
+
+void MyFrame::setZ2Txt(wxString s)
+{
+	zTxt2->SetLabel(s);
+	Layout();
+}
+
+wxSlider* MyFrame::getSlider()
+{
+	return m_slider;
 }

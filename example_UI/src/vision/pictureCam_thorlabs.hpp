@@ -10,6 +10,7 @@
 
 #include <windows.h>
 #include "uc480class.h"
+#include <opencv2/core/core.hpp>
 
 enum _disp_mode
 {
@@ -34,6 +35,7 @@ protected:
 	SENSORINFO m_sInfo;     // sensor info struct
 	bool m_cameraLoaded;
 	int m_nDispModeSel;
+	cv::Mat intrinsics, distortion;
 
 public:
 	pictureCam_thorlabs(HWND);
@@ -63,6 +65,8 @@ public:
 	INT getLMemoryId();
 	void setLMemoryId(INT lMemoryId);
 	Cuc480 getCamera();
+	cv::Mat calculateRotationMatrix(cv::Rect r);
+	cv::Mat calculateU(cv::Mat, cv::Mat);
 
 	HCAM  GetCameraHandle ();
 	HWND  GetWindowHandle ();

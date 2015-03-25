@@ -32,6 +32,8 @@ public:
 	virtual void *Entry();
 	virtual void OnExit();
 	void calcHist(cv::Mat*);
+	void stop();
+	cv::Rect *getROI();
 
 private:
 	MyFrame			*m_pFrame;
@@ -40,6 +42,11 @@ private:
 	IplImage* cv_image;
 	cv::Mat distortion;
 	cv::Mat intrinsics;
+
+	double thetaX, thetaY, thetaZ;
+	cv::Rect * r;
+
+	void calibrate();
 };
 
 #endif /* WORKER_H_ */

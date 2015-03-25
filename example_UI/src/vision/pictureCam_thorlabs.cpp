@@ -24,17 +24,7 @@
 using namespace cv;
 using namespace std;
 
-//probably should not define them here like this, but it makes it a lot easier for me
-pictureCam_thorlabs *pct;
-double badMeh, avg;
-int ndx, u, d;
-int l, r;
-string filename = "out_camera_data.yml";
-Mat intrinsics, distortion;
-double avals[200] = {};
-double bvals[200] = {};
-double cvals[200] = {};
-double dvals[200] = {};
+//string filename = "out_camera_data.yml";
 
 /*
  * PictureCam_Thorlabs is basically the same as uc480Live from Thorlabs only without MFC
@@ -50,6 +40,10 @@ pictureCam_thorlabs::pictureCam_thorlabs(HWND h)
 	m_pcImageMemory = 0;// image memory - pointer to buffer
 	m_lMemoryId = 0;    // image memory - buffer ID
 	m_nDispModeSel = e_disp_mode_bitmap;
+	//TODO: these 2 should be read from "out_camera_data.yml"
+	distortion = (Mat_<double>(5,1) << 7.2914041963856420e+000, 2.0979596618049214e+000, -2.3690347009888141e-001, 5.1098820884635382e-002, 1.4682521220954941e-003 );
+	intrinsics =  (Mat_<double>(3,3) << 2.0529114902590052e+004, 0., 6.3928941571612074e+002, 0.,
+			2.5657205522615815e+004, 5.1836001554552104e+002, 0., 0., 1.) ;
 	m_cameraLoaded = OpenCamera();       // open a camera handle
 }
 
@@ -403,4 +397,112 @@ void pictureCam_thorlabs::setPixelClock(int value)
 	{
 		cout << "something went wrong and there is no open camera."<< endl;
 	}
+}
+
+Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
+{
+	//TODO: these values should not be hardcoded
+	int boardHeight = 3;
+	int boardWidth = 4;
+	Size cbSize = Size(boardHeight,boardWidth);
+
+	vector<Point2d> imagePoints;
+	bool found = false;
+	Mat img = Mat(1024, 1280, CV_8UC3, getPcImageMemory());
+	cvtColor(img, img, COLOR_BGR2GRAY);
+//	resize(img, img, Size(0, 0), 0.5, 0s.5);
+	Scalar w = Scalar(255,255,255);
+	Scalar o = Scalar(128,128,128);
+	//detect chessboard corners
+	int key = 0;
+	while(!found)
+	{
+		render();
+
+		img = Mat(1024, 1280, CV_8UC3, getPcImageMemory());
+		img = img(r);	//get the sub-image we are looking at
+		cvtColor(img, img, COLOR_BGR2GRAY);
+		resize(img, img, Size(0, 0), 0.5, 0.5);
+		found = findChessboardCorners(img, cbSize, imagePoints,
+				CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
+				+ CALIB_CB_FAST_CHECK);
+		for (int i = 0; i < imagePoints.size(); i++)
+		{
+			if(i == boardHeight-1 || i == boardHeight*(boardWidth - 1))
+				circle(img, imagePoints[i], 4 , o);
+			else
+				circle(img, imagePoints[i], 4 , w);
+		}
+		imshow("test", img);
+		key = waitKey(1);
+		if (key==27)
+			break;
+	}
+
+	//	Mat intrinsics;
+	Mat rvec = Mat(Size(3,1), CV_64F);
+	Mat tvec = Mat(Size(3,1), CV_64F);
+
+	//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
+	vector<Point3d> boardPoints, framePoints;
+
+	//generate vectors for the points on the chessboard
+	for (int i=0; i<boardWidth; i++)
+	{
+		for (int j=0; j<boardHeight; j++)
+		{
+			boardPoints.push_back( Point3d( double(i), double(j), 0.0) );
+		}
+	}
+
+	//generate points in the reference frame
+	framePoints.push_back( Point3d( 0.0, 0.0, 0.0 ) );
+	framePoints.push_back( Point3d( 5.0, 0.0, 0.0 ) );
+	framePoints.push_back( Point3d( 0.0, 5.0, 0.0 ) );
+	framePoints.push_back( Point3d( 0.0, 0.0, 5.0 ) );
+
+	cout<<"lets solve it"<<endl;
+	//find the camera extrinsic parameters
+	//If the distortion is NULL/empty, the zero distortion coefficients are assumed
+	try {
+		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,0.95);	//the last value describes how accurate it should be (value should be between 0 - 1)
+	} catch (Exception e) {
+		cout<<"error @:"<<e.what()<<endl;
+	}
+	//			//show the pose estimation data
+	cout << fixed << setprecision(4) << "rvec = ["
+			<< rvec.at<double>(0,0) << ", "
+			<< rvec.at<double>(1,0) << ", "
+			<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
+			<< tvec.at<double>(0,0) << ", "
+			<< tvec.at<double>(1,0) << ", "
+			<< tvec.at<double>(2,0) << "]" << endl;
+
+//	cout << "rvec = " << rvec<< "\ttvec = "<< tvec<< endl;
+
+
+	Mat rotationMatrix;
+
+	Rodrigues(rvec,rotationMatrix);
+	return rotationMatrix;
+}
+
+Mat pictureCam_thorlabs::calculateU(Mat a, Mat b)
+{
+
+	Mat t0 = (b-(a.dot(b))*a)/norm(b-(a.dot(b))*a);
+	Mat t1 = a.cross(b);
+	Mat f = (Mat_<double>(3,3) << a.at<double>(0,0) , t0.at<double>(0,0), t1.at<double>(0,0),
+									a.at<double>(0,1) , t0.at<double>(0,1), t1.at<double>(0,1),
+									a.at<double>(0,2) , t0.at<double>(0,2), t1.at<double>(0,2));
+//	cout<<"\nf = "<<f<<endl;
+	Mat f1 = f.inv();
+//	cout<<"\nf1 = "<<f1<<endl;
+
+//	cout<<"\nf1*f = (this should be the identity matrix) "<<(f1*f)<<endl;
+	Mat g;
+	g = (Mat_<double>(3,3) << a.dot(b), - norm(a.cross(b)), 0,	norm(a.cross(b)), a.dot(b), 0,	0,0,1);
+	Mat u = f1.inv() * g * f1;
+	cout<< "\nu = " << u <<endl;
+	return u;
 }

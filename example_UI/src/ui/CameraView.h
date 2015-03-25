@@ -24,6 +24,8 @@ public:
 
 	void CheckUpdate();
 	void DrawCam( cv::Mat* img );
+	void setLineHight(int h);
+	int getLineHight();
 
 protected:
 	DECLARE_EVENT_TABLE()
@@ -35,6 +37,7 @@ protected:
 
 	bool	m_bDrawing;
 	bool	m_bNewImage;
+	int		hight; //hoogte van de getekende lijn
 
 private:
 	void OnPaint( wxPaintEvent& event );

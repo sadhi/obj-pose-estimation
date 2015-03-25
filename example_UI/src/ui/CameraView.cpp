@@ -40,6 +40,7 @@ wxWindow(frame, -1, pos, size, wxSIMPLE_BORDER )
 		m_bDrawing = false;
 //		image.Clear();
 		m_bNewImage = false;
+		hight = 512;
 }
 
 CameraView::~CameraView() {
@@ -86,7 +87,9 @@ void CameraView::Draw( wxDC& dc )
 		{
 			// draw inter frame ?
 		}
-
+		// draw a red line, this should only be done on view1
+		dc.SetPen( wxPen( wxColor(255,0,0), 2 ) ); // 5-pixels-thick red outline
+		dc.DrawLine( 10, hight, w-10, hight ); // draw line across the rectangle
 //		dc.EndDrawing();	//Deprecated, did nothing anyway?
 		m_bDrawing = false;
 
@@ -158,4 +161,14 @@ void CameraView::OnSize( wxSizeEvent& event )
 	m_nWidth = nWidth;
 	m_nHeight = nHeight;
 
+}
+
+void CameraView::setLineHight(int h)
+{
+	hight = h;
+}
+
+int CameraView::getLineHight()
+{
+	return hight;
 }

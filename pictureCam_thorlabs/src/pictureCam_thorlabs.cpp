@@ -486,8 +486,9 @@ float angleBetween(const Point &v1, const Point &v2)
  */
 int getChessOrientation(Mat img)
 {
-	int boardHeight = 5;
-	int boardWidth = 5;
+	//TODO: update values
+	int boardHeight = 3;
+	int boardWidth = 4;
 	Size cbSize = Size(boardHeight,boardWidth);
 
 	vector<Point2d> imagePoints;
@@ -586,23 +587,24 @@ int getChessOrientation(Mat img)
 			{
 				if(p1.x>0 && p2.y<0)	//A, 'long arm' right, 'short arm' down
 				{
-					cout<<"D2"<<endl;
-					dvals[l] = a;
-					l++;
-				}
-				else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
-				{
 					cout<<"A2"<<endl;
 					avals[u] = a;
 					u++;
 				}
-				else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' down
+				else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
+				{
+					cout<<"D2"<<endl;
+
+					dvals[l] = a;
+					l++;
+				}
+				else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' up
 				{
 					cout<<"C2"<<endl;
 					cvals[d] = a;
 					d++;
 				}
-				else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' up
+				else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' down
 				{
 					cout<<"B2"<<endl;
 					bvals[r] = a;
