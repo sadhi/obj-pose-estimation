@@ -205,12 +205,12 @@ void Worker::calibrate()
 			m_pFrame);
 
 	Mat rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
+//
+	Mat a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
+	Mat b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
 
-	Mat a = (Mat_<double>(1,3) <<	rMat1.at<double>(2,0), rMat1.at<double>(2,1), rMat1.at<double>(2,2));
-	Mat b = (Mat_<double>(1,3) <<	rMat2.at<double>(2,0), rMat2.at<double>(2,1), rMat2.at<double>(2,2));
-
-//	Mat a = (Mat_<double>(1,3) <<	-0.8230065775088815, 0.01852642709937535, -0.5677296406530568);
-//	Mat b = (Mat_<double>(1,3) <<	-0.8205612951246357, 0.03776898284020541, -0.5703092712542877);
+//	Mat a = (Mat_<double>(3,1) <<	-0.0380843713614482, 0.8556574439214423, -0.5161394378652218);
+//	Mat b = (Mat_<double>(3,1) <<	0.03423277676286986, -0.8406947007822847,  -0.5404262549799819);
 
 	Mat u1 = pct->calculateU(a, b);
 	cout<<"a = " <<a<<endl;
@@ -218,15 +218,20 @@ void Worker::calibrate()
 	cout<<"\n"<<endl;
 
 	double t = 0.5 * (u1.at<double>(0,0) + u1.at<double>(1,1) + u1.at<double>(2,2) - 1);
-	double theta = acos(t ) * (180/M_PI);	//theta = arcos(1/2[A11 + A22 + A33 - 1])
+	double theta = acos(fmod(t,1) ) * (180/M_PI);	//theta = arcos(1/2[A11 + A22 + A33 - 1])
 
 	double ex1 = (u1.at<double>(2,1) - u1.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
 	double ex2 = (u1.at<double>(0,2) - u1.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
 	double ex3 = (u1.at<double>(1,0) - u1.at<double>(0,1))/(2*sin(theta * M_PI / 180.0));
 
+	wxMessageBox("Change the angle of the x-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
+			"Action required",
+			wxOK | wxICON_INFORMATION,
+			m_pFrame);
+
 	rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	a = (Mat_<double>(1,3) <<	rMat2.at<double>(2,0), rMat2.at<double>(2,1), rMat2.at<double>(2,2));
-//	a = (Mat_<double>(1,3) <<	-0.8205612951246357, 0.03776898284020541, -0.5703092712542877);
+	a = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
+//	a = (Mat_<double>(3,1) <<	-0.01815673977444407,  0.860831436039724,  -0.50856619188317);
 
 	wxMessageBox("Change the angle of the y-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
 			"Action required",
@@ -234,8 +239,8 @@ void Worker::calibrate()
 			m_pFrame);
 
 	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	b = (Mat_<double>(1,3) <<	rMat1.at<double>(2,0), rMat1.at<double>(2,1), rMat1.at<double>(2,2));
-//	b = (Mat_<double>(1,3) <<	0.8504392751821623, -0.01428064628263098, -0.5258793610414736);
+	b = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
+//	b = (Mat_<double>(3,1) <<	-0.01796244869473578,  0.8493643840377958,  -0.5275011787332657);
 
 	Mat u2 = pct->calculateU(a, b);
 	cout<<"a = " <<a<<endl;
@@ -243,15 +248,20 @@ void Worker::calibrate()
 	cout<<"\n"<<endl;
 
 	t = 0.5 * (u2.at<double>(0,0) + u2.at<double>(1,1) + u2.at<double>(2,2) - 1);
-	theta = acos(t )* (180/M_PI) ;	//theta = arcos(1/2[A11 + A22 + A33 - 1])
+	theta = acos(fmod(t,1) )* (180/M_PI) ;	//theta = arcos(1/2[A11 + A22 + A33 - 1])
 
 	double ey1 = (u2.at<double>(2,1) - u2.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
 	double ey2 = (u2.at<double>(0,2) - u2.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
 	double ey3 = (u2.at<double>(1,0) - u2.at<double>(0,1))/(2*sin(theta * M_PI / 180.0));
 
+	wxMessageBox("Change the angle of the x-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
+			"Action required",
+			wxOK | wxICON_INFORMATION,
+			m_pFrame);
+
 	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	a = (Mat_<double>(1,3) <<	rMat1.at<double>(2,0), rMat1.at<double>(2,1), rMat1.at<double>(2,2));
-//	a = (Mat_<double>(1,3) <<	0.8504392751821623, -0.01428064628263098, -0.5258793610414736);
+	a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
+//	a = (Mat_<double>(3,1) <<	-0.01837536096184191, 0.8473801210449836,  -0.5306687069795155);
 
 	wxMessageBox("Change the angle of the z-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
 			"Action required",
@@ -259,8 +269,8 @@ void Worker::calibrate()
 			m_pFrame);
 
 	rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	b = (Mat_<double>(1,3) <<	rMat2.at<double>(2,0), rMat2.at<double>(2,1), rMat2.at<double>(2,2));
-//	b = (Mat_<double>(1,3) <<	-0.8344756408017202, 0.0300688893871407, -0.5502238333620073);
+	b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
+//	b = (Mat_<double>(3,1) <<	-0.01605614547087797,  0.8482646454936019,  -0.5293290955523152);
 
 	Mat u3 = pct->calculateU(a, b);
 	cout<<"a = " <<a<<endl;
@@ -268,7 +278,7 @@ void Worker::calibrate()
 	cout<<"\n"<<endl;
 
 	t = 0.5 * (u3.at<double>(0,0) + u3.at<double>(1,1) + u3.at<double>(2,2) - 1) ;
-	theta = acos( t) * (180.0 / M_PI);	//theta = arccos(1/2[A11 + A22 + A33 - 1])
+	theta = acos( fmod(t,1)) * (180.0 / M_PI);	//theta = arccos(1/2[A11 + A22 + A33 - 1])
 
 	double ez1 = (u3.at<double>(2,1) - u3.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
 	double ez2 = (u3.at<double>(0,2) - u3.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
@@ -278,58 +288,75 @@ void Worker::calibrate()
 			ex2, ey2, ez2,
 			ex3, ey3, ez3);
 
-//	cout<<"( "<<uCamStage.at<double>(0,0)<<", "<< uCamStage.at<double>(0,1)<<", "<< uCamStage.at<double>(0,2)<<";\n"<<
-//			uCamStage.at<double>(1,0)<<", "<< uCamStage.at<double>(1,1)<<", "<< uCamStage.at<double>(1,2)<<";\n"<<
-//			uCamStage.at<double>(2,0)<<", "<< uCamStage.at<double>(2,1)<<", "<< uCamStage.at<double>(2,2)<<";)\n"<<endl;
-	cout<<"uCamStage = "<<uCamStage <<endl;
+	cout<<"camera angels:"<<endl;
+
+	t = uCamStage.at<double>(2,0);
+//	cout<<"t = "<<t<<endl;
+	thetaY = asin(fmod(t,1))*180/M_PI;
+	cout<<"thetaY = "<<thetaY<<endl;
+
+	t = uCamStage.at<double>(2,2)/sqrt( 1 - pow(  uCamStage.at<double>(2,0), 2) );
+//	cout<<"t = "<<t<<endl;
+	thetaX = acos( t ) * 180/M_PI;
+	cout<<"thetaX = "<<thetaX<<endl;
+
+	t = uCamStage.at<double>(0,0)/sqrt( 1 - pow(  uCamStage.at<double>(2,0), 2) );
+//	cout<<"t = "<<t<<endl;
+	thetaZ = acos( t ) * 180/M_PI;
+	cout<<"thetaZ = "<<thetaZ<<endl;
+
+	cout << "\nunitx = "<< sqrt(pow(ex1, 2) + pow(ex2, 2) + pow(ex3, 2)) <<endl;
+	cout << "unity = "<< sqrt(pow(ey1, 2) + pow(ey2, 2) + pow(ey3, 2)) <<endl;
+	cout << "unitz = "<< sqrt(pow(ez1, 2) + pow(ez2, 2) + pow(ez3, 2)) <<endl;
+
 	Mat uCS1 = uCamStage.inv();
 	cout<<"\nuCamStage = "<<uCamStage <<endl;
-	cout<<"\nuCS1 = "<<uCS1 <<endl;
+	cout<<"\n\nuCS1 = "<<uCS1 <<endl;
 
 	cout<<"\nnew stuff comming"<<endl;
-	/*	//figure this out in code, use ROI i.c.w. the slider
-		detect object 1 -> a
-		Mat a1 = uCamStage * a
-		detect object 2 -> b
-		Mat b1 = uCamStage * b
-		Mat uStage = pct->calculateU(a1, b1);
-	 */
+
 
 	//test data
-	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	a = (Mat_<double>(1,3) <<	rMat1.at<double>(2,0), rMat1.at<double>(2,1), rMat1.at<double>(2,2));
-//	a = (Mat_<double>(1,3) <<	-0.8230065775088815, 0.01852642709937535, -0.5677296406530568);
-//	Mat a1 = a*uCamStage;
-//	cout<<"a = " <<a1<<endl;
-//	cout<<"\nshould be: "<<uCamStage.at<double>(0,0)*a.at<double>(0,0) + uCamStage.at<double>(0,1)*a.at<double>(0,0) + uCamStage.at<double>(0,2)*a.at<double>(0,0)<<";\n"<<
-//			uCamStage.at<double>(1,0)*a.at<double>(0,1) + uCamStage.at<double>(1,1)*a.at<double>(0,1) + uCamStage.at<double>(1,2)*a.at<double>(0,1)<<";\n"<<
-//			uCamStage.at<double>(2,0)*a.at<double>(0,2) + uCamStage.at<double>(2,1)*a.at<double>(0,2) + uCamStage.at<double>(2,2)*a.at<double>(0,2)<<";\n"<<endl;
-	Mat a1 = (Mat_<double>(1,3)<<uCS1.at<double>(0,0)*a.at<double>(0,0) + uCS1.at<double>(0,1)*a.at<double>(0,0) + uCS1.at<double>(0,2)*a.at<double>(0,0),
-						uCS1.at<double>(1,0)*a.at<double>(0,1) + uCS1.at<double>(1,1)*a.at<double>(0,1) + uCS1.at<double>(1,2)*a.at<double>(0,1),
-						uCS1.at<double>(2,0)*a.at<double>(0,2) + uCS1.at<double>(2,1)*a.at<double>(0,2) + uCS1.at<double>(2,2)*a.at<double>(0,2));
-	cout<<"a = " <<a1<<endl;
+//	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
+//	a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
+	a = (Mat_<double>(3,1) <<	-0.0380843713614482, 0.8556574439214423, -0.5161394378652218);
+
+	Mat a1 = (Mat_<double>(3,1)<<uCS1.at<double>(0,0)*a.at<double>(0,0) + uCS1.at<double>(1,0)*a.at<double>(0,0) + uCS1.at<double>(2,0)*a.at<double>(0,0),
+						uCS1.at<double>(0,1)*a.at<double>(1,0) + uCS1.at<double>(1,1)*a.at<double>(1,0) + uCS1.at<double>(2,1)*a.at<double>(1,0),
+						uCS1.at<double>(0,2)*a.at<double>(2,0) + uCS1.at<double>(1,2)*a.at<double>(2,0) + uCS1.at<double>(2,2)*a.at<double>(2,0));
+	cout<<"a1 = " <<a<<endl;
 
 	wxMessageBox("Change the location of the chip.\nClick 'OK' when you are done.",
 			"Action required",
 			wxOK | wxICON_INFORMATION,
 			m_pFrame);
 
-	rMat2 = pct->calculateRotationMatrix(*r);
-//	b = (Mat_<double>(1,3) <<	-0.8205612951246357, 0.03776898284020541, -0.5703092712542877);		//enkel 1mm over x rot
-//	b = (Mat_<double>(1,3) <<	-0.8344756408017202, 0.0300688893871407, -0.5502238333620073);		//1mm over x,y&z rot
-	b = (Mat_<double>(1,3) <<	rMat2.at<double>(2,0), rMat2.at<double>(2,1), rMat2.at<double>(2,2));
-	Mat b1 = (Mat_<double>(1,3)<<uCS1.at<double>(0,0)*b.at<double>(0,0) + uCS1.at<double>(0,1)*b.at<double>(0,0) + uCS1.at<double>(0,2)*b.at<double>(0,0),
-							uCS1.at<double>(1,0)*b.at<double>(0,1) + uCS1.at<double>(1,1)*b.at<double>(0,1) + uCS1.at<double>(1,2)*b.at<double>(0,1),
-							uCS1.at<double>(2,0)*b.at<double>(0,2) + uCS1.at<double>(2,1)*b.at<double>(0,2) + uCS1.at<double>(2,2)*b.at<double>(0,2));
-	cout<<"b = " <<b1<<endl;
-	Mat uStage = pct->calculateU(a, b);
+//	rMat2 = pct->calculateRotationMatrix(*r);
+//	b = (Mat_<double>(3,1) <<	-0.8205612951246357, 0.03776898284020541, -0.5703092712542877);		//enkel 2mm over x rot
+	b = (Mat_<double>(3,1) <<	-0.01605614547087797, 0.8482646454936019,  -0.5293290955523152);		//2mm over x,y&z rot
+//	b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
+	Mat b1 = (Mat_<double>(3,1)<<uCS1.at<double>(0,0)*b.at<double>(0,0) + uCS1.at<double>(1,0)*b.at<double>(0,0) + uCS1.at<double>(2,0)*b.at<double>(0,0),
+							uCS1.at<double>(0,1)*b.at<double>(1,0) + uCS1.at<double>(1,1)*b.at<double>(1,0) + uCS1.at<double>(2,1)*b.at<double>(1,0),
+							uCS1.at<double>(0,2)*b.at<double>(2,0) + uCS1.at<double>(1,2)*b.at<double>(2,0) + uCS1.at<double>(2,2)*b.at<double>(2,0));
+	cout<<"b1 = " <<b1<<endl;
+	Mat uStage = pct->calculateU(a1, b1);
+//	Mat uStage = pct->calculateU(a, b);
 
-	t = uStage.at<double>(0,2);
-	thetaY = asin(fmod(t,1))*180/M_PI;
+	t = fmod(uStage.at<double>(2,0),1);
+	thetaY = asin(t)*180/M_PI;
+	cout<<"thetaY = "<<thetaY<<endl;
+	t = fmod(uStage.at<double>(2,2),1)/sqrt( 1 - pow( fmod(uStage.at<double>(2,0),1) , 2) );
+	thetaX = acos( t ) * 180/M_PI;
+	cout<<"thetaX = "<<thetaX<<endl;
+	t = fmod(uStage.at<double>(0,0),1)/sqrt( 1 - pow( fmod(uStage.at<double>(2,0),1) , 2) );
+	thetaZ = acos( t ) * 180/M_PI;
+	cout<<"thetaZ = "<<thetaZ<<endl;
+
+	//test
 	t = (fmod(uStage.at<double>(2,2),1)/cos(thetaY*M_PI/180));
-	thetaX = acos(t)*180/M_PI;
+	cout << "x = " << acos(fmod(t,1))*180/M_PI <<endl;
 	t = (fmod(uStage.at<double>(0,0),1)/cos(thetaY*M_PI/180));
-	thetaZ = acos(t)*180/M_PI;
+	cout<<"z = " << acos(fmod(t,1))*180/M_PI<<endl;
 
 	std::ostringstream s;
 	s << "" << thetaX ;
@@ -364,6 +391,7 @@ void Worker::calibrate()
 	s.clear();
 	s << "" << thetaZ ;
 	m_pFrame->setZ2Txt(s.str());
+
 //	Mat e = (Mat_<double>(3,3) << 0,-e3,e2, e3,0,-e1, -e2,e1,0);
 //	cout<<"e = " <<e<<endl;
 

@@ -34,6 +34,7 @@ double avals[200] = {};
 double bvals[200] = {};
 double cvals[200] = {};
 double dvals[200] = {};
+Mat tvecOld1, tvecOld2;
 
 /*
  * PictureCam_Thorlabs is basically the same as uc480Live from Thorlabs only without MFC
@@ -481,14 +482,14 @@ float angleBetween(const Point &v1, const Point &v2)
  *  In the sample code this was done in the main, so it needs to be reworked a bit
  *
  *  A --- B
- *  |     |		designed it differently but made a mistake in the order and didn't want to change it again, sorry ...
+ *  |     |
  *  D --- C
  */
 int getChessOrientation(Mat img)
 {
 	//TODO: update values
-	int boardHeight = 3;
-	int boardWidth = 4;
+	int boardHeight = 4;
+	int boardWidth = 6;
 	Size cbSize = Size(boardHeight,boardWidth);
 
 	vector<Point2d> imagePoints;
@@ -521,13 +522,13 @@ int getChessOrientation(Mat img)
 	//find camera orientation if the chessboard corners have been found
 	if ( found )
 	{
-		cout<<"\n<----------- Estimated pose -------------->"<<endl;
-		//	Mat intrinsics;
+		//		cout<<"\n<----------- Estimated pose -------------->"<<endl;
 		Mat rvec = Mat(Size(3,1), CV_64F);
 		Mat tvec = Mat(Size(3,1), CV_64F);
+		Mat tvecO = Mat(Size(3,1), CV_64F);
 
 		//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
-		vector<Point3d> boardPoints, framePoints;
+		vector<Point3d> boardPoints;
 
 		//generate vectors for the points on the chessboard
 		for (int i=0; i<boardWidth; i++)
@@ -538,113 +539,151 @@ int getChessOrientation(Mat img)
 			}
 		}
 
-		//generate points in the reference frame
-		framePoints.push_back( Point3d( 0.0, 0.0, 0.0 ) );
-		framePoints.push_back( Point3d( 5.0, 0.0, 0.0 ) );
-		framePoints.push_back( Point3d( 0.0, 5.0, 0.0 ) );
-		framePoints.push_back( Point3d( 0.0, 0.0, 5.0 ) );
-
 		//calculate the angle between the last point in the first row and the last point in the first collum.
-		//this should be 90 degrees, however since my camera is angled at 45 degrees I should keep this into account
+		//this should be 90 degrees, however since my camera is angled at 45 degrees and the platform can be angled too, I should keep this into account
 		Point2d p1, p2;
 		p1.x = imagePoints[boardHeight-1].x - imagePoints[0].x;
 		p1.y = imagePoints[boardHeight-1].y - imagePoints[0].y;
 		p2.x = imagePoints[boardHeight*(boardWidth - 1)].x - imagePoints[0].x;
 		p2.y = imagePoints[boardHeight*(boardWidth - 1)].y - imagePoints[0].y;
 		double a = angleBetween(p1,p2);
-		cout<<"angle is "<<a<<endl;
-		if(a>80 && a<100)
+		//		cout<<"angle is "<<a<<endl;
+		//		if(a>70 && a<110)
+		//		{
+		vector<Point2d> imgPoints;
+		//			//if-statement magic ....
+		if(p1.x<20 && p1.x>-20)
 		{
-			//if-statement magic ....
-			if(p1.x<20 && p1.x>-20)	//'long arm' vertical
+			if(p2.x>0 && p1.y<0)	//A,
 			{
-				if(p2.x>0 && p1.y<0)	//A,
+				cout<<"\nD1"<<endl;
+//				dvals[l] = a;
+//				l++;
+				imgPoints = imagePoints;
+				for(int i = 1; i<=boardHeight*boardWidth; i++)
 				{
-					cout<<"D1"<<endl;
-					dvals[l] = a;
-					l++;
-				}
-				else if(p2.x>0 && p1.y>0) //D,
-				{
-					cout<<"A1"<<endl;
-					avals[u] = a;
-					u++;
-				}
-				else if(p2.x<0 && p1.y<0)	//C,
-				{
-					cout<<"C1"<<endl;
-					cvals[d] = a;
-					d++;
-				}
-				else if(p2.x<0 && p1.y>0) //B,
-				{
-					cout<<"B1"<<endl;
-					bvals[r] = a;
-					r++;
+					imgPoints[i-1] = imagePoints[(boardHeight*boardWidth)-i];
 				}
 			}
-			else	//'long arm' horizontal
+			else if(p2.x>0 && p1.y>0) //D,
 			{
-				if(p1.x>0 && p2.y<0)	//A, 'long arm' right, 'short arm' down
+				cout<<"A1"<<endl;
+//				avals[u] = a;
+//				u++;
+			}
+			else if(p2.x<0 && p1.y<0)	//C,
+			{
+				cout<<"C1"<<endl;
+//				cvals[d] = a;
+//				d++;
+			}
+			else if(p2.x<0 && p1.y>0) //B,
+			{
+				cout<<"\nB1->D1"<<endl;
+//				bvals[r] = a;
+//				r++;
+				imgPoints = imagePoints;
+				for(int i = 1; i<=boardHeight*boardWidth; i++)
 				{
-					cout<<"A2"<<endl;
-					avals[u] = a;
-					u++;
+					imgPoints[i-1] = imagePoints[(boardHeight*boardWidth)-i];
 				}
-				else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
-				{
-					cout<<"D2"<<endl;
+			}
+		}
+		else	//'long arm' horizontal
+		{
+			if(p1.x>0 && p2.y<0)	//A, 'long arm' right, 'short arm' down
+			{
+				cout<<"A2"<<endl;
+//				avals[u] = a;
+//				u++;
+			}
+			else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
+			{
+				cout<<"D2"<<endl;
 
-					dvals[l] = a;
-					l++;
-				}
-				else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' up
-				{
-					cout<<"C2"<<endl;
-					cvals[d] = a;
-					d++;
-				}
-				else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' down
-				{
-					cout<<"B2"<<endl;
-					bvals[r] = a;
-					r++;
-				}
+//				dvals[l] = a;
+//				l++;
 			}
-			ndx++;
-			//find the camera extrinsic parameters
-			//If the distortion is NULL/empty, the zero distortion coefficients are assumed
-			line(img, imagePoints[0],imagePoints[boardHeight-1],w);
-			line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
-			//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
-			solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
-			//			//show the pose estimation data
-			cout << fixed << setprecision(4) << "rvec = ["
-					<< rvec.at<double>(0,0) << ", "
-					<< rvec.at<double>(1,0) << ", "
-					<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
-					<< tvec.at<double>(0,0) << ", "
-					<< tvec.at<double>(1,0) << ", "
-					<< tvec.at<double>(2,0) << "]" << endl;
-			Mat rotationMatrix;
-			Rodrigues(rvec,rotationMatrix);
-			cout << "\nrotation matrix:\n["
-					<< rotationMatrix.at<double>(0,0) << ", "
-					<< rotationMatrix.at<double>(1,0) << ", "
-					<< rotationMatrix.at<double>(2,0) << "] \n["
-					<< rotationMatrix.at<double>(0,1) << ", "
-					<< rotationMatrix.at<double>(1,1) << ", "
-					<< rotationMatrix.at<double>(2,1) << "] \n["
-					<< rotationMatrix.at<double>(0,2) << ", "
-					<< rotationMatrix.at<double>(1,2) << ", "
-					<< rotationMatrix.at<double>(2,2) << "] \n"<< endl;
+			else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' up
+			{
+				cout<<"C2"<<endl;
+//				cvals[d] = a;
+//				d++;
+			}
+			else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' down
+			{
+				cout<<"B2"<<endl;
+//				bvals[r] = a;
+//				r++;
+			}
+		}
+
+		//find the camera extrinsic parameters
+		//If the distortion is NULL/empty, the zero distortion coefficients are assumed
+		line(img, imgPoints[0],imgPoints[boardHeight-1],w);
+		line(img, imgPoints[0],imgPoints[boardHeight*(boardWidth - 1)],w);
+		//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
+		solvePnPRansac( Mat(boardPoints), Mat(imgPoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+		//			//			//show the pose estimation data
+//		tvec.at<double>(0,0) = roundf(tvec.at<double>(0,0) * 10000) / 10000;
+//		tvec.at<double>(1,0) = roundf(tvec.at<double>(1,0) * 10000) / 10000;
+//		tvec.at<double>(2,0) = roundf(tvec.at<double>(2,0) * 10000) / 10000;
+//		cout <<fixed<<setprecision(4)<<  "tvec = "<< tvec << endl;
+//		cout << "\ntvecOld1 = "<< tvecOld1<< endl;
+
+		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvecO, false ,200,8.0,200);
+//		tvecO.at<double>(0,0) = roundf(tvecO.at<double>(0,0) * 10000) / 10000;
+//		tvecO.at<double>(1,0) = roundf(tvecO.at<double>(1,0) * 10000) / 10000;
+//		tvecO.at<double>(2,0) = roundf(tvecO.at<double>(2,0) * 10000) / 10000;
+//		cout << "\n\ntvecO = "<< tvecO<< endl;
+//		cout << "\ntvecOld2 = "<< tvecOld2<< endl;
+
+		if(ndx==0)
+		{
+			tvecOld1 = tvec;
+			tvecOld2 = tvecO;
+			avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
+			bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
+			cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
+
 		}
 		else
 		{
-			cout << "bad measurement"<<endl;
-			badMeh++;
-		}
+			cout<<"\nindex = "<<ndx<<endl;
+			double d1 = pow(pow(tvec.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
+			d1 = roundf(d1 * 100) / 100;	//round to 2 decimals
+			cout<<"tvec , tvecOld1 = " << d1 << endl;
+			double d2 = pow(pow(tvec.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
+			d2 = roundf(d2 * 100) / 100;	//round to 2 decimals
+			cout<<"tvec , tvecOld2 = " << d2 << endl;
 
+			double d3 = pow(pow(tvecO.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
+			d3 = roundf(d3 * 100) / 100;	//round to 2 decimals
+			cout<<"\ntvecO , tvecOld1 = " << d3 << endl;
+			double d4 = pow(pow(tvecO.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
+			d4 = roundf(d4 * 100) / 100;	//round to 2 decimals
+			cout<<"tvecO , tvecOld2 = " << d4 << endl;
+
+			if(d4>d3 && d1>2)	//a different origin was taken when compared to the last measurement
+			{
+				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
+				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
+				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
+
+				tvecOld1 = tvecO;
+				tvecOld2 = tvec;
+			}
+			else	//same origin
+			{
+				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld1.at<double>(0,0);
+				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld1.at<double>(1,0);
+				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld1.at<double>(2,0);
+
+				tvecOld1 = tvec;
+				tvecOld2 = tvecO;
+			}
+		}
+		ndx++;
 		return 1;
 	}
 	else
@@ -663,11 +702,6 @@ int main() {
 	 */
 	namedWindow( "Original", WINDOW_AUTOSIZE );
 	resizeWindow("Original",1200,950);
-	//these do not need to be made in advance
-	//	namedWindow( "result", WINDOW_AUTOSIZE );
-	//	resizeWindow("result",50,1);
-	//	namedWindow("histogram", WINDOW_AUTOSIZE );
-	//	resizeWindow("histogram",50,1);
 
 	/*
 	 * initialize the values we will be using
@@ -694,24 +728,18 @@ int main() {
 		distortion = Mat::zeros(5, 1, CV_64F);
 		intrinsics = Mat::eye(3, 3, CV_64F);
 
-		//		Mat M = (Mat_<double>(3,3) << 1, 0, 0, 0, 1, 0, 0, 0, 1);
-		distortion = (Mat_<double>(5,1) << 7.2914041963856420e+000, 2.0979596618049214e+000, -2.3690347009888141e-001, 5.1098820884635382e-002, 1.4682521220954941e-003 );
-		intrinsics =  (Mat_<double>(3,3) << 2.0529114902590052e+004, 0., 6.3928941571612074e+002, 0.,
-				2.5657205522615815e+004, 5.1836001554552104e+002, 0., 0., 1.) ;
+		distortion = (Mat_<double>(5,1) << 3.8654777889913724e+001, -3.8245991379523409e-001,
+				3.9884910642621724e-001, 1.4881952204747112e-001,
+				-1.0394776844313427e-004 );
+		intrinsics =  (Mat_<double>(3,3) << 2.4321094911390839e+004, 0., 4.8782427879579103e+002, 0.,
+				3.0850178156461727e+004, 4.0423527036496580e+002, 0., 0., 1.) ;
 
 		running = true;
 	}
-	/*
-	 * load camera parameters
-	 */
-	//	FileStorage fs;
-	//	fs.open(filename, FileStorage::READ);
-	//	// read camera matrix and distortion coefficients from file
-	//	fs["Camera_Matrix"] >> intrinsics;
-	//	fs["Distortion_Coefficients"] >> distortion;
-	//	// close the input file
-	//	fs.release();
+	bool printP = false;
 
+	tvecOld1 = Mat(Size(3,1), CV_64F);
+	tvecOld2 = Mat(Size(3,1), CV_64F);
 	//application loop
 	while(running)
 	{
@@ -727,41 +755,14 @@ int main() {
 		//! converts old-style IplImage to the new matrix; the data is not copied by default
 		imgMat = Mat(cv_image, false);
 		cvtColor(imgMat, grayImg, CV_BGR2GRAY);
-
-		//		equalizeHist( grayImg, grayImg );		//preferably not stretched with software
 		calcHist(&grayImg);
-		/* threshold type
-		 * 0: Binary
-		 * 1: Binary Inverted
-		 * 2: Threshold Truncated
-		 * 3: Threshold to Zero
-		 * 4: Threshold to Zero Inverted
-		 */
-		//		threshold( grayImg, grayImg, 30, 255, CV_THRESH_BINARY );
 
-		/*
-		 * let's do some opening and closing
-		 */
-		//		element = getStructuringElement(MORPH_RECT, Size(4, 4) );
-		//		dilate(grayImg, grayImg, element);
-		//		dilate(grayImg, grayImg, element);
-		//		//		element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
-		//		erode(grayImg, grayImg, element);
-		//		erode(grayImg, grayImg, element);
-		//		element = getStructuringElement(MORPH_ELLIPSE, Size(5, 5) );
-		//		erode(grayImg, grayImg, element);
-		//		dilate(grayImg, grayImg, element);
-		//		erode(grayImg, grayImg, element);
-		//		dilate(grayImg, grayImg, element);
-		//		componentAnalysis(imgMat);
-		//		orbExample(grayImg, imgMat);
-		getChessOrientation(grayImg);
-		//cout<<ndx<<"+"<<endl;
-		//		imshow("result", imgMat);
-		//		detailEnhance(grayImg,grayImg);	//opencv-3.0.0 beta function
+		if(printP)
+			getChessOrientation(grayImg);
+
 		imshow("result", grayImg);
-		//		if(ndx >= 20)
-		//			running =false;
+		if(ndx == 200)
+			running =false;
 		switch(waitKey(1))
 		{
 		case 27:	//esc
@@ -769,7 +770,9 @@ int main() {
 			cout << "Closing application." << endl;
 			running = false;
 			break;
-			//		case 's':
+		case 's':
+			printP = !printP;
+			cout<<"\nS pressed."<<endl;
 			//			/*
 			//			 * check out this code: https://github.com/MasteringOpenCV/code
 			//			 * from "Mastering OpenCV with Practical Computer Vision Projects by Daniel Lelis Baggio" http://image2measure.net/files/Mastering_OpenCV.pdf
@@ -779,59 +782,63 @@ int main() {
 			//
 			//			getChessOrientation(grayImg);
 			//			imshow("result", imgMat);
-			//			break;
+			break;
 		default:
 			break;
 		}
-		if(ndx>=200)
-			running=false;
+		//		if(ndx>=200)
+		//			running=false;
 	}
-	if(u!=0)
-	{
+
+//	if(u!=0)
+//	{
 		avg = 0;
-		for(int i = 0; i<u; i++)
+	cout<<"\nThe difference in x is:\n"<<endl;
+		for(int i = 0; i<ndx-1; i++)
 		{
 			cout << fixed <<setprecision(4)<< avals[i]<<"\t";
 			avg += avals[i];
 		}
-		cout<<"\nThe average angle for A is "<<avg/u<<"\n"<<endl;
-	}
-
-	if(r!=0)
-	{
+		cout<<"\nThe average difference in x is "<<avg/(ndx-1)<<"\n"<<endl;
+//	}
+//
+//	if(r!=0)
+//	{
 		avg = 0;
-		for(int i = 0; i<r; i++)
+		cout<<"\nThe difference in y is:\n"<<endl;
+		for(int i = 0; i<ndx-1; i++)
 		{
 			cout << fixed <<setprecision(4)<< bvals[i]<<"\t";
 			avg += bvals[i];
 		}
-		cout<<"\nThe average angle for B is "<<avg/r<<"\n"<<endl;
-	}
-
-	if(d!=0)
-	{
+		cout<<"\nThe average difference in y is "<<avg/(ndx-1)<<"\n"<<endl;
+//	}
+//
+//	if(d!=0)
+//	{
 		avg = 0;
-		for(int i = 0; i<d; i++)
+		cout<<"\nThe difference in z is:\n"<<endl;
+		for(int i = 0; i<ndx-1; i++)
 		{
 			cout << fixed <<setprecision(4)<< cvals[i]<<"\t";
 			avg += cvals[i];
 		}
-		cout<<"\nThe average angle for C is "<<avg/d<<"\n"<<endl;
-	}
-
-	if(l!=0)
-	{
-		avg = 0;
-		for(int i = 0; i<l; i++)
-		{
-			cout << fixed <<setprecision(4)<< dvals[i]<<"\t";
-			avg += dvals[i];
-		}
-		cout<<"\nThe average angle for D is "<<avg/l<<"\n"<<endl;
-	}
-
-	if(ndx!=0)
-		cout << "there were "<< badMeh << " bad measurements"<<endl;
+		cout<<"\nThe average difference in z is "<<avg/(ndx-1)<<"\n"<<endl;
+//	}
+//
+//	if(l!=0)
+//	{
+//		avg = 0;
+//		for(int i = 0; i<l; i++)
+//		{
+//			cout << fixed <<setprecision(4)<< dvals[i]<<"\t";
+//			avg += dvals[i];
+//		}
+//		cout<<"\nThe average angle for D is "<<avg/l<<"\n"<<endl;
+//	}
+//
+//	if(ndx!=0)
+//		cout << "there were "<< badMeh << " bad measurements"<<endl;
 
 	pct->ExitCamera();
 	pct = NULL;

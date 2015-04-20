@@ -42,9 +42,11 @@ pictureCam_thorlabs::pictureCam_thorlabs(HWND h)
 	m_nDispModeSel = e_disp_mode_bitmap;
 	//TODO: these 2 should be read from "out_camera_data.yml"
 	distortion = (Mat_<double>(5,1) << 7.2914041963856420e+000, 2.0979596618049214e+000, -2.3690347009888141e-001, 5.1098820884635382e-002, 1.4682521220954941e-003 );
-	intrinsics =  (Mat_<double>(3,3) << 2.0529114902590052e+004, 0., 6.3928941571612074e+002, 0.,
-			2.5657205522615815e+004, 5.1836001554552104e+002, 0., 0., 1.) ;
+	intrinsics =  (Mat_<double>(3,3) << 2.0529114902590052e+004, 0., 6.3928941571612074e+002,
+			0., 2.5657205522615815e+004, 5.1836001554552104e+002,
+			0., 0., 1.) ;
 	m_cameraLoaded = OpenCamera();       // open a camera handle
+	cross = Mat::zeros(3,1, CV_64F);
 }
 
 pictureCam_thorlabs::~pictureCam_thorlabs()
@@ -399,11 +401,14 @@ void pictureCam_thorlabs::setPixelClock(int value)
 	}
 }
 
+/*
+ * this returns a 4x4 matrix that contains both the rotation and translation
+ */
 Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 {
 	//TODO: these values should not be hardcoded
-	int boardHeight = 3;
-	int boardWidth = 4;
+	int boardHeight = 4;
+	int boardWidth = 6;
 	Size cbSize = Size(boardHeight,boardWidth);
 
 	vector<Point2d> imagePoints;
@@ -433,6 +438,11 @@ Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 			else
 				circle(img, imagePoints[i], 4 , w);
 		}
+		if(found)
+		{
+			line(img, imagePoints[0],imagePoints[boardHeight-1],w);
+			line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
+		}
 		imshow("test", img);
 		key = waitKey(1);
 		if (key==27)
@@ -441,7 +451,7 @@ Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 
 	//	Mat intrinsics;
 	Mat rvec = Mat(Size(3,1), CV_64F);
-	Mat tvec = Mat(Size(3,1), CV_64F);
+	tvec = Mat(Size(3,1), CV_64F);
 
 	//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
 	vector<Point3d> boardPoints, framePoints;
@@ -462,6 +472,17 @@ Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 	framePoints.push_back( Point3d( 0.0, 0.0, 5.0 ) );
 
 	cout<<"lets solve it"<<endl;
+//
+//	Point2d p1, p2;
+//	p1.x = imagePoints[boardHeight-1].x - imagePoints[0].x;
+//	p1.y = imagePoints[boardHeight-1].y - imagePoints[0].y;
+//	p2.x = imagePoints[boardHeight*(boardWidth - 1)].x - imagePoints[0].x;
+//	p2.y = imagePoints[boardHeight*(boardWidth - 1)].y - imagePoints[0].y;
+//
+//	cross.at<double>(0,0) = 0;
+//	cross.at<double>(0,1) = 0;
+//	cross.at<double>(0,2) = p1.x * p2.y - p1.y * p2.x;
+
 	//find the camera extrinsic parameters
 	//If the distortion is NULL/empty, the zero distortion coefficients are assumed
 	try {
@@ -484,7 +505,20 @@ Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 	Mat rotationMatrix;
 
 	Rodrigues(rvec,rotationMatrix);
-	return rotationMatrix;
+//	rotationMatrix = rotationMatrix.t();	// rotation of inverse
+//	cout<<"R = " << rotationMatrix <<endl;
+//	tvec = -rotationMatrix * tvec; 			// translation of inverse
+//	cout<<"T = " << tvec <<endl;
+
+	//[R.T|t]
+	Mat extr = (Mat_<double>(3,3) <<	rotationMatrix.at<double>(0,0), rotationMatrix.at<double>(0,1), rotationMatrix.at<double>(0,2),// tvec.at<double>(0,0),
+			rotationMatrix.at<double>(1,0), rotationMatrix.at<double>(1,1), rotationMatrix.at<double>(1,2),// tvec.at<double>(1,0),
+			rotationMatrix.at<double>(2,0), rotationMatrix.at<double>(2,1), rotationMatrix.at<double>(2,2));// tvec.at<double>(2,0),
+//					0,0,0,1);
+
+	cout<<"extr = " << extr <<"\n"<<endl;
+//	return rotationMatrix;
+	return extr;
 }
 
 Mat pictureCam_thorlabs::calculateU(Mat a, Mat b)
@@ -493,8 +527,8 @@ Mat pictureCam_thorlabs::calculateU(Mat a, Mat b)
 	Mat t0 = (b-(a.dot(b))*a)/norm(b-(a.dot(b))*a);
 	Mat t1 = a.cross(b);
 	Mat f = (Mat_<double>(3,3) << a.at<double>(0,0) , t0.at<double>(0,0), t1.at<double>(0,0),
-									a.at<double>(0,1) , t0.at<double>(0,1), t1.at<double>(0,1),
-									a.at<double>(0,2) , t0.at<double>(0,2), t1.at<double>(0,2));
+									a.at<double>(1,0) , t0.at<double>(1,0), t1.at<double>(1,0),
+									a.at<double>(2,0) , t0.at<double>(2,0), t1.at<double>(2,0));
 //	cout<<"\nf = "<<f<<endl;
 	Mat f1 = f.inv();
 //	cout<<"\nf1 = "<<f1<<endl;
@@ -505,4 +539,9 @@ Mat pictureCam_thorlabs::calculateU(Mat a, Mat b)
 	Mat u = f1.inv() * g * f1;
 	cout<< "\nu = " << u <<endl;
 	return u;
+}
+
+Mat pictureCam_thorlabs::getLastCross()
+{
+	return cross;
 }

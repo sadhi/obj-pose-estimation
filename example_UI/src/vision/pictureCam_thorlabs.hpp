@@ -37,6 +37,9 @@ protected:
 	int m_nDispModeSel;
 	cv::Mat intrinsics, distortion;
 
+	cv::Mat tvec;
+	cv::Mat cross;
+
 public:
 	pictureCam_thorlabs(HWND);
 	virtual ~pictureCam_thorlabs();
@@ -65,8 +68,10 @@ public:
 	INT getLMemoryId();
 	void setLMemoryId(INT lMemoryId);
 	Cuc480 getCamera();
+
 	cv::Mat calculateRotationMatrix(cv::Rect r);
 	cv::Mat calculateU(cv::Mat, cv::Mat);
+	cv::Mat getLastCross();
 
 	HCAM  GetCameraHandle ();
 	HWND  GetWindowHandle ();
