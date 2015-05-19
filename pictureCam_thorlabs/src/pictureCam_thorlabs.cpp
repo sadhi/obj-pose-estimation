@@ -13,20 +13,23 @@
 #include <math.h>
 
 #include "pictureCam_thorlabs.hpp"
-
+//#include <Eigen>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/gpu/gpu.hpp>
+//#include "opencv2/core/eigen.hpp"
+//#include <LU>
 
 using namespace cv;
 using namespace std;
+//using namespace Eigen;
 
 //probably should not define them here like this, but it makes it a lot easier for me
 pictureCam_thorlabs *pct;
 double badMeh, avg;
-int ndx, u, d;
+int ndx, u, rndx;
 int l, r;
 string filename = "out_camera_data.yml";
 Mat intrinsics, distortion;
@@ -34,7 +37,10 @@ double avals[200] = {};
 double bvals[200] = {};
 double cvals[200] = {};
 double dvals[200] = {};
+Mat a, b, c, d, q;
+Mat x1, x2;
 Mat tvecOld1, tvecOld2;
+Mat n;
 
 /*
  * PictureCam_Thorlabs is basically the same as uc480Live from Thorlabs only without MFC
@@ -500,9 +506,6 @@ int getChessOrientation(Mat img)
 		found = findChessboardCorners(img, cbSize, imagePoints,
 				CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
 				+ CALIB_CB_FAST_CHECK);
-		//		if(found)
-		//			cornerSubPix(img, imagePoints, Size(5, 5), Size(-1, -1),
-		//					TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 	} catch (Exception e) {
 		cout<<"we had an error here"<<e.what()<<endl;
 	}
@@ -546,42 +549,45 @@ int getChessOrientation(Mat img)
 		p1.y = imagePoints[boardHeight-1].y - imagePoints[0].y;
 		p2.x = imagePoints[boardHeight*(boardWidth - 1)].x - imagePoints[0].x;
 		p2.y = imagePoints[boardHeight*(boardWidth - 1)].y - imagePoints[0].y;
-		double a = angleBetween(p1,p2);
+		//		double a = angleBetween(p1,p2);
 		//		cout<<"angle is "<<a<<endl;
 		//		if(a>70 && a<110)
 		//		{
 		vector<Point2d> imgPoints;
-		//			//if-statement magic ....
+		//			//if-statement magic ....	//TODO: change to something that works in any situation (like the corner distance thing)
 		if(p1.x<20 && p1.x>-20)
 		{
 			if(p2.x>0 && p1.y<0)	//A,
 			{
 				cout<<"\nD1"<<endl;
-//				dvals[l] = a;
-//				l++;
+				//				dvals[l] = a;
+				//				l++;
 				imgPoints = imagePoints;
 				for(int i = 1; i<=boardHeight*boardWidth; i++)
 				{
-					imgPoints[i-1] = imagePoints[(boardHeight*boardWidth)-i];
+					imagePoints[i-1] = imgPoints[(boardHeight*boardWidth)-i];
 				}
+				//				Mat temp = tvecOld2;
+				//				tvecOld2 = tvecOld1;
+				//				tvecOld1 = temp;
 			}
 			else if(p2.x>0 && p1.y>0) //D,
 			{
 				cout<<"A1"<<endl;
-//				avals[u] = a;
-//				u++;
+				//				avals[u] = a;
+				//				u++;
 			}
 			else if(p2.x<0 && p1.y<0)	//C,
 			{
 				cout<<"C1"<<endl;
-//				cvals[d] = a;
-//				d++;
+				//				cvals[d] = a;
+				//				d++;
 			}
 			else if(p2.x<0 && p1.y>0) //B,
 			{
 				cout<<"\nB1->D1"<<endl;
-//				bvals[r] = a;
-//				r++;
+				//				bvals[r] = a;
+				//				r++;
 				imgPoints = imagePoints;
 				for(int i = 1; i<=boardHeight*boardWidth; i++)
 				{
@@ -594,27 +600,27 @@ int getChessOrientation(Mat img)
 			if(p1.x>0 && p2.y<0)	//A, 'long arm' right, 'short arm' down
 			{
 				cout<<"A2"<<endl;
-//				avals[u] = a;
-//				u++;
+				//				avals[u] = a;
+				//				u++;
 			}
 			else if(p1.x>0 && p2.y>0) //D, 'long arm' right, 'short arm' up
 			{
 				cout<<"D2"<<endl;
 
-//				dvals[l] = a;
-//				l++;
+				//				dvals[l] = a;
+				//				l++;
 			}
 			else if(p1.x<0 && p2.y<0)	//C, 'long arm' left, 'short arm' up
 			{
 				cout<<"C2"<<endl;
-//				cvals[d] = a;
-//				d++;
+				//				cvals[d] = a;
+				//				d++;
 			}
 			else if(p1.x<0 && p2.y>0) //B, 'long arm' left, 'short arm' down
 			{
 				cout<<"B2"<<endl;
-//				bvals[r] = a;
-//				r++;
+				//				bvals[r] = a;
+				//				r++;
 			}
 		}
 
@@ -622,68 +628,714 @@ int getChessOrientation(Mat img)
 		//If the distortion is NULL/empty, the zero distortion coefficients are assumed
 		line(img, imgPoints[0],imgPoints[boardHeight-1],w);
 		line(img, imgPoints[0],imgPoints[boardHeight*(boardWidth - 1)],w);
-		//		rectangle(img, imagePoints[0], imagePoints[imagePoints.size()-1],CV_RGB(255,255,255));
 		solvePnPRansac( Mat(boardPoints), Mat(imgPoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
-		//			//			//show the pose estimation data
-//		tvec.at<double>(0,0) = roundf(tvec.at<double>(0,0) * 10000) / 10000;
-//		tvec.at<double>(1,0) = roundf(tvec.at<double>(1,0) * 10000) / 10000;
-//		tvec.at<double>(2,0) = roundf(tvec.at<double>(2,0) * 10000) / 10000;
-//		cout <<fixed<<setprecision(4)<<  "tvec = "<< tvec << endl;
-//		cout << "\ntvecOld1 = "<< tvecOld1<< endl;
 
 		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvecO, false ,200,8.0,200);
-//		tvecO.at<double>(0,0) = roundf(tvecO.at<double>(0,0) * 10000) / 10000;
-//		tvecO.at<double>(1,0) = roundf(tvecO.at<double>(1,0) * 10000) / 10000;
-//		tvecO.at<double>(2,0) = roundf(tvecO.at<double>(2,0) * 10000) / 10000;
-//		cout << "\n\ntvecO = "<< tvecO<< endl;
-//		cout << "\ntvecOld2 = "<< tvecOld2<< endl;
 
 		if(ndx==0)
 		{
 			tvecOld1 = tvec;
 			tvecOld2 = tvecO;
-			avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
-			bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
-			cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
+			avals[ndx] = roundf(tvec.at<double>(0,0)*100)/100 ;//- tvecOld1.at<double>(0,0);
+			bvals[ndx] = roundf(tvec.at<double>(1,0)*100)/100 ;//- tvecOld1.at<double>(1,0);
+			cvals[ndx] = roundf(tvec.at<double>(2,0)) ; ;//- tvecOld2.at<double>(2,0);
 
 		}
 		else
 		{
 			cout<<"\nindex = "<<ndx<<endl;
-			double d1 = pow(pow(tvec.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
-			d1 = roundf(d1 * 100) / 100;	//round to 2 decimals
-			cout<<"tvec , tvecOld1 = " << d1 << endl;
-			double d2 = pow(pow(tvec.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
-			d2 = roundf(d2 * 100) / 100;	//round to 2 decimals
-			cout<<"tvec , tvecOld2 = " << d2 << endl;
+			//			double d1 = pow(pow(tvec.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
+			//			d1 = roundf(d1 * 100) / 100;	//round to 2 decimals
+			////			cout<<"tvec , tvecOld1 = " << d1 << endl;
+			//			double d2 = pow(pow(tvec.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
+			//			d2 = roundf(d2 * 100) / 100;	//round to 2 decimals
+			////			cout<<"tvec , tvecOld2 = " << d2 << endl;
+			//
+			//			double d3 = pow(pow(tvecO.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
+			//			d3 = roundf(d3 * 100) / 100;	//round to 2 decimals
+			////			cout<<"\ntvecO , tvecOld1 = " << d3 << endl;
+			//			double d4 = pow(pow(tvecO.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
+			//			d4 = roundf(d4 * 100) / 100;	//round to 2 decimals
+			//			cout<<"tvecO , tvecOld2 = " << d4 << endl;
 
-			double d3 = pow(pow(tvecO.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
-			d3 = roundf(d3 * 100) / 100;	//round to 2 decimals
-			cout<<"\ntvecO , tvecOld1 = " << d3 << endl;
-			double d4 = pow(pow(tvecO.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
-			d4 = roundf(d4 * 100) / 100;	//round to 2 decimals
-			cout<<"tvecO , tvecOld2 = " << d4 << endl;
-
-			if(d4>d3 && d1>2)	//a different origin was taken when compared to the last measurement
+			//			if(d4>d3 && d1>2)	//a different origin was taken when compared to the last measurement
+			//			{
+			//				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
+			//				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
+			//				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
+			//
+			//				tvecOld1 = tvecO;
+			//				tvecOld2 = tvec;
+			//			}
+			//			else	//same origin
+			//			{
+			avals[ndx] = roundf(tvec.at<double>(0,0)*100)/100 ;//- tvecOld1.at<double>(0,0);
+			bvals[ndx] = roundf(tvec.at<double>(1,0)*100)/100 ;//- tvecOld1.at<double>(1,0);
+			cvals[ndx] = roundf(tvec.at<double>(2,0)) ;//- tvecOld1.at<double>(2,0);
+			cout<<"tvec = "<<tvec<<endl;
+			if(ndx%5 == 0)
 			{
-				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
-				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
-				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
-
-				tvecOld1 = tvecO;
-				tvecOld2 = tvec;
+				int i = floor(ndx/5)-1;
+				dvals[i] = pow(pow(avals[ndx] - avals[ndx-1],2) + pow(bvals[ndx] - bvals[ndx-1],2) + pow(cvals[ndx] - cvals[ndx-1],2),0.5);
 			}
-			else	//same origin
-			{
-				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld1.at<double>(0,0);
-				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld1.at<double>(1,0);
-				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld1.at<double>(2,0);
-
-				tvecOld1 = tvec;
-				tvecOld2 = tvecO;
-			}
+			cout<<"distance = " << pow(pow(avals[ndx] - avals[ndx-1],2) + pow(bvals[ndx] - bvals[ndx-1],2) + pow(cvals[ndx] - cvals[ndx-1],2),0.5)  <<endl;
+			tvecOld1 = tvec;
+			tvecOld2 = tvecO;
+			//			}
 		}
 		ndx++;
+		return 1;
+	}
+	else
+	{
+		//		cout<<"failed to detect corners"<<endl;
+		return 0;
+	}
+}
+
+// Given two sets of 3D points, find the rotation + translation + scale
+// which best maps the first set to the second.
+// Source: http://en.wikipedia.org/wiki/Kabsch_algorithm
+
+// The input 3D points are stored as columns.
+//Eigen::Affine3d Find3DAffineTransform(Eigen::Matrix3Xd in, Eigen::Matrix3Xd out) {
+//
+//	// Default output
+//	Eigen::Affine3d A;
+//	A.linear() = Eigen::Matrix3d::Identity(3, 3);
+//	A.translation() = Eigen::Vector3d::Zero();
+//
+//	if (in.cols() != out.cols())
+//		throw "Find3DAffineTransform(): input data mis-match";
+//
+//	// First find the scale, by finding the ratio of sums of some distances,
+//	// then bring the datasets to the same scale.
+//	double dist_in = 0, dist_out = 0;
+//	Eigen::Vector3d v;
+//	cout<<"in = "<<in<<endl;
+//	for (int col = 0; col < in.cols()-1; col++) {
+//		v = (in.col(col+1) - in.col(col));
+//		cout<<"v = "<<v<<endl;
+//		dist_in  += v.norm();
+//		v = (out.col(col+1) - out.col(col));
+//		dist_out += v.norm();
+//	}
+//	if (dist_in <= 0 || dist_out <= 0)
+//		return A;
+//	double scale = dist_out/dist_in;
+//	out /= scale;
+//
+//	// Find the centroids then shift to the origin
+//	Eigen::Vector3d in_ctr = Eigen::Vector3d::Zero();
+//	Eigen::Vector3d out_ctr = Eigen::Vector3d::Zero();
+//	for (int col = 0; col < in.cols(); col++) {
+//		in_ctr  += in.col(col);
+//		out_ctr += out.col(col);
+//	}
+//	in_ctr /= in.cols();
+//	out_ctr /= out.cols();
+//	for (int col = 0; col < in.cols(); col++) {
+//		in.col(col)  -= in_ctr;
+//		out.col(col) -= out_ctr;
+//	}
+//
+//	// SVD
+//	Eigen::MatrixXd Cov = in * out.transpose();
+//	Eigen::JacobiSVD<Eigen::MatrixXd> svd(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
+//
+//	// Find the rotation
+//	MatrixXd temp = (svd.matrixV() * svd.matrixU().transpose());
+//	double d = temp.determinant();
+//	if (d > 0)
+//		d = 1.0;
+//	else
+//		d = -1.0;
+//	Eigen::Matrix3d I = Eigen::Matrix3d::Identity(3, 3);
+//	I(2, 2) = d;
+//	Eigen::Matrix3d R = svd.matrixV() * I * svd.matrixU().transpose();
+//
+//	// The final transform
+//	A.linear() = scale * R;
+//	A.translation() = scale*(out_ctr - R*in_ctr);
+//
+//	return A;
+//}
+
+int roots(double *a,int n,double *wr,double *wi)
+{
+    double sq,b2,c,disc;
+    int m, numroots;
+
+    m = n;
+    numroots = 0;
+    while (m > 1) {
+        b2 = -0.5*a[m-2];
+        c = a[m-1];
+        disc = b2*b2-c;
+        if (disc < 0.0) {                   // complex roots
+            sq = sqrt(-disc);
+            wr[m-2] = b2;
+            wi[m-2] = sq;
+            wr[m-1] = b2;
+            wi[m-1] = -sq;
+            numroots+=2;
+        }
+        else {                              // real roots
+            sq = sqrt(disc);
+            wr[m-2] = fabs(b2)+sq;
+            if (b2 < 0.0) wr[m-2] = -wr[m-2];
+            if (wr[m-2] == 0)
+                wr[m-1] = 0;
+            else {
+                wr[m-1] = c/wr[m-2];
+                numroots+=2;
+            }
+            wi[m-2] = 0.0;
+            wi[m-1] = 0.0;
+        }
+        m -= 2;
+    }
+    if (m == 1) {
+       wr[0] = -a[0];
+       wi[0] = 0.0;
+       numroots++;
+    }
+    return numroots;
+}
+//
+// Deflate polynomial 'a' by dividing out 'quad'. Return quotient
+// polynomial in 'b' and error metric based on remainder in 'err'.
+//
+void deflate(double *a,int n,double *b,double *quad,double *err)
+{
+    double r,s;
+    int i;
+
+    r = quad[1];
+    s = quad[0];
+
+    b[1] = a[1] - r;
+
+    for (i=2;i<=n;i++){
+        b[i] = a[i] - r * b[i-1] - s * b[i-2];
+    }
+    *err = fabs(b[n])+fabs(b[n-1]);
+}
+//
+// Find quadratic factor using Bairstow's method (quadratic Newton method).
+// A number of ad hoc safeguards are incorporated to prevent stalls due
+// to common difficulties, such as zero slope at iteration point, and
+// convergence problems.
+//
+// Bairstow's method is sensitive to the starting estimate. It is possible
+// for convergence to fail or for 'wild' values to trigger an overflow.
+//
+// It is advisable to institute traps for these problems. (To do!)
+//
+void find_quad(double *a,int n,double *b,double *quad,double *err, int *iter)
+{
+    double *c,dn,dr,ds,drn,dsn,eps,r,s;
+    int i;
+
+    c = new double [n+1];
+    c[0] = 1.0;
+    r = quad[1];
+    s = quad[0];
+    eps = 1e-15;
+    *iter = 1;
+
+    do {
+        if (*iter > 500) break;
+        if (((*iter) % 200) == 0) {
+            eps *= 10.0;
+		}
+		b[1] = a[1] - r;
+		c[1] = b[1] - r;
+
+		for (i=2;i<=n;i++){
+			b[i] = a[i] - r * b[i-1] - s * b[i-2];
+			c[i] = b[i] - r * c[i-1] - s * c[i-2];
+		}
+		dn=c[n-1] * c[n-3] - c[n-2] * c[n-2];
+		drn=b[n] * c[n-3] - b[n-1] * c[n-2];
+		dsn=b[n-1] * c[n-1] - b[n] * c[n-2];
+
+        if (fabs(dn) < 1e-10) {
+            if (dn < 0.0) dn = -1e-8;
+            else dn = 1e-8;
+        }
+        dr = drn / dn;
+        ds = dsn / dn;
+		r += dr;
+		s += ds;
+        (*iter)++;
+    } while ((fabs(dr)+fabs(ds)) > eps);
+    quad[0] = s;
+    quad[1] = r;
+    *err = fabs(ds)+fabs(dr);
+    delete [] c;
+}
+//
+// Differentiate polynomial 'a' returning result in 'b'.
+//
+void diff_poly(double *a,int n,double *b)
+{
+    double coef;
+    int i;
+
+    coef = (double)n;
+    b[0] = 1.0;
+    for (i=1;i<n;i++) {
+        b[i] = a[i]*((double)(n-i))/coef;
+    }
+}
+//
+// Attempt to find a reliable estimate of a quadratic factor using modified
+// Bairstow's method with provisions for 'digging out' factors associated
+// with multiple roots.
+//
+// This resursive routine operates on the principal that differentiation of
+// a polynomial reduces the order of all multiple roots by one, and has no
+// other roots in common with it. If a root of the differentiated polynomial
+// is a root of the original polynomial, there must be multiple roots at
+// that location. The differentiated polynomial, however, has lower order
+// and is easier to solve.
+//
+// When the original polynomial exhibits convergence problems in the
+// neighborhood of some potential root, a best guess is obtained and tried
+// on the differentiated polynomial. The new best guess is applied
+// recursively on continually differentiated polynomials until failure
+// occurs. At this point, the previous polynomial is accepted as that with
+// the least number of roots at this location, and its estimate is
+// accepted as the root.
+//
+void recurse(double *a,int n,double *b,int m,double *quad,
+    double *err,int *iter)
+{
+    double *c,*x,rs[2],tst;
+
+    if (fabs(b[m]) < 1e-16) m--;    // this bypasses roots at zero
+    if (m == 2) {
+        quad[0] = b[2];
+        quad[1] = b[1];
+        *err = 0;
+        *iter = 0;
+        return;
+    }
+    c = new double [m+1];
+    x = new double [n+1];
+    c[0] = x[0] = 1.0;
+    rs[0] = quad[0];
+    rs[1] = quad[1];
+    *iter = 0;
+    find_quad(b,m,c,rs,err,iter);
+    tst = fabs(rs[0]-quad[0])+fabs(rs[1]-quad[1]);
+    if (*err < 1e-12) {
+        quad[0] = rs[0];
+        quad[1] = rs[1];
+    }
+// tst will be 'large' if we converge to wrong root
+    if (((*iter > 5) && (tst < 1e-4)) || ((*iter > 20) && (tst < 1e-1))) {
+        diff_poly(b,m,c);
+        recurse(a,n,c,m-1,rs,err,iter);
+        quad[0] = rs[0];
+        quad[1] = rs[1];
+    }
+    delete [] x;
+    delete [] c;
+}
+//
+// Top level routine to manage the determination of all roots of the given
+// polynomial 'a', returning the quadratic factors (and possibly one linear
+// factor) in 'x'.
+//
+void get_quads(double *a,int n,double *quad,double *x)
+{
+    double *b,*z,err,tmp;
+    int iter,i,m;
+
+    if ((tmp = a[0]) != 1.0) {
+        a[0] = 1.0;
+        for (i=1;i<=n;i++) {
+            a[i] /= tmp;
+        }
+    }
+    if (n == 2) {
+        x[0] = a[1];
+        x[1] = a[2];
+        return;
+    }
+    else if (n == 1) {
+        x[0] = a[1];
+        return;
+    }
+    m = n;
+    b = new double [n+1];
+    z = new double [n+1];
+    b[0] = 1.0;
+    for (i=0;i<=n;i++) {
+        z[i] = a[i];
+        x[i] = 0.0;
+    }
+    do {
+        if (n > m) {
+            quad[0] = 3.14159e-1;
+            quad[1] = 2.78127e-1;
+        }
+        do {                    // This loop tries to assure convergence
+            for (i=0;i<5;i++) {
+                find_quad(z,m,b,quad,&err,&iter);
+                if ((err > 1e-7) || (iter > 500)) {
+                    diff_poly(z,m,b);
+                    recurse(z,m,b,m-1,quad,&err,&iter);
+                }
+                deflate(z,m,b,quad,&err);
+                if (err < 0.001) break;
+                quad[0] = rand() % 8 - 4.0;
+                quad[1] = rand() % 8 - 4.0;
+            }
+            if (err > 0.01) {
+                cout << "Error! Convergence failure in quadratic x^2 + r*x + s." << endl;
+                cout << "Enter new trial value for 'r': ";
+                cin >> quad[1];
+                cout << "Enter new trial value for 's' ( 0 to exit): ";
+                cin >> quad[0];
+                if (quad[0] == 0) exit(1);
+            }
+        } while (err > 0.01);
+        x[m-2] = quad[1];
+        x[m-1] = quad[0];
+        m -= 2;
+        for (i=0;i<=m;i++) {
+            z[i] = b[i];
+        }
+    } while (m > 2);
+    if (m == 2) {
+        x[0] = b[1];
+        x[1] = b[2];
+    }
+    else x[0] = b[1];
+    delete [] z;
+    delete [] b;
+}
+
+/*
+ * @param a: 4x4 matrix
+ * @param b: 4x4 matrix
+ *
+ * repeat this an x number of times
+*/
+void determineRotation(Mat a, Mat b)
+{
+	Mat a1 = Mat::zeros(4,4,CV_64F);
+	Mat b1 = Mat::zeros(4,4,CV_64F);
+
+	Mat a2 = Mat::zeros(4,4,CV_64F);
+	Mat b2 = Mat::zeros(4,4,CV_64F);
+
+	Mat a3 = Mat::zeros(4,4,CV_64F);
+	Mat b3 = Mat::zeros(4,4,CV_64F);
+
+	//Setting up data
+	//first set
+	a1.at<double>(0,1) = -(a.at<double>(0,0));
+	a1.at<double>(1,0) = a.at<double>(0,0);
+	a1.at<double>(0,2) = -(a.at<double>(1,0));
+	a1.at<double>(2,0) = a.at<double>(1,0);
+	a1.at<double>(0,3) = -(a.at<double>(2,0));
+	a1.at<double>(3,0) = a.at<double>(2,0);
+	a1.at<double>(1,2) = a.at<double>(2,0);
+	a1.at<double>(2,1) = -(a.at<double>(2,0));
+	a1.at<double>(1,3) = -(a.at<double>(1,0));
+	a1.at<double>(3,1) = a.at<double>(1,0);
+	a1.at<double>(2,3) = -(a.at<double>(0,0));
+	a1.at<double>(3,2) = a.at<double>(0,0);
+
+	b1.at<double>(0,1) = -(b.at<double>(0,0));
+	b1.at<double>(1,0) = b.at<double>(0,0);
+	b1.at<double>(0,2) = -(b.at<double>(1,0));
+	b1.at<double>(2,0) = b.at<double>(1,0);
+	b1.at<double>(0,3) = -(b.at<double>(2,0));
+	b1.at<double>(3,0) = b.at<double>(2,0);
+	b1.at<double>(1,2) = b.at<double>(2,0);
+	b1.at<double>(2,1) = -(b.at<double>(2,0));
+	b1.at<double>(1,3) = -(b.at<double>(1,0));
+	b1.at<double>(3,1) = b.at<double>(1,0);
+	b1.at<double>(2,3) = -(b.at<double>(0,0));
+	b1.at<double>(3,2) = b.at<double>(0,0);
+
+	//second set
+	a2.at<double>(0,1) = -(a.at<double>(0,1));
+	a2.at<double>(1,0) = a.at<double>(0,1);
+	a2.at<double>(0,2) = -(a.at<double>(1,1));
+	a2.at<double>(2,0) = a.at<double>(1,1);
+	a2.at<double>(0,3) = -(a.at<double>(2,1));
+	a2.at<double>(3,0) = a.at<double>(2,1);
+	a2.at<double>(1,2) = a.at<double>(2,1);
+	a2.at<double>(2,1) = -(a.at<double>(2,1));
+	a2.at<double>(1,3) = -(a.at<double>(1,1));
+	a2.at<double>(3,1) = a.at<double>(1,1);
+	a2.at<double>(2,3) = -(a.at<double>(0,1));
+	a2.at<double>(3,2) = a.at<double>(0,1);
+
+	b2.at<double>(0,1) = -(b.at<double>(0,1));
+	b2.at<double>(1,0) = b.at<double>(0,1);
+	b2.at<double>(0,2) = -(b.at<double>(1,1));
+	b2.at<double>(2,0) = b.at<double>(1,1);
+	b2.at<double>(0,3) = -(b.at<double>(2,1));
+	b2.at<double>(3,0) = b.at<double>(2,1);
+	b2.at<double>(1,2) = b.at<double>(2,1);
+	b2.at<double>(2,1) = -(b.at<double>(2,1));
+	b2.at<double>(1,3) = -(b.at<double>(1,1));
+	b2.at<double>(3,1) = b.at<double>(1,1);
+	b2.at<double>(2,3) = -(b.at<double>(0,1));
+	b2.at<double>(3,2) = b.at<double>(0,1);
+
+	//third set
+	a3.at<double>(0,1) = -(a.at<double>(0,2));
+	a3.at<double>(1,0) = a.at<double>(0,2);
+	a3.at<double>(0,2) = -(a.at<double>(1,2));
+	a3.at<double>(2,0) = a.at<double>(1,2);
+	a3.at<double>(0,3) = -(a.at<double>(2,2));
+	a3.at<double>(3,0) = a.at<double>(2,2);
+	a3.at<double>(1,2) = a.at<double>(2,2);
+	a3.at<double>(2,1) = -(a.at<double>(2,2));
+	a3.at<double>(1,3) = -(a.at<double>(1,2));
+	a3.at<double>(3,1) = a.at<double>(1,2);
+	a3.at<double>(2,3) = -(a.at<double>(0,2));
+	a3.at<double>(3,2) = a.at<double>(0,2);
+
+	b3.at<double>(0,1) = -(b.at<double>(0,2));
+	b3.at<double>(1,0) = b.at<double>(0,2);
+	b3.at<double>(0,2) = -(b.at<double>(1,2));
+	b3.at<double>(2,0) = b.at<double>(1,2);
+	b3.at<double>(0,3) = -(b.at<double>(2,2));
+	b3.at<double>(3,0) = b.at<double>(2,2);
+	b3.at<double>(1,2) = b.at<double>(2,2);
+	b3.at<double>(2,1) = -(b.at<double>(2,2));
+	b3.at<double>(1,3) = -(b.at<double>(1,2));
+	b3.at<double>(3,1) = b.at<double>(1,2);
+	b3.at<double>(2,3) = -(b.at<double>(0,2));
+	b3.at<double>(3,2) = b.at<double>(0,2);
+
+	n = (a1.t() * b1) + (a2.t() * b2) + (a3.t() * b3);
+
+	//use laplace on a 4x4 matrix to get the zmax value (a*x^4 + b*x^3 + c*x^2 + d*x + e = 0)
+		double a_val = 1;
+		double b_val = -n.at<double>(0,0) - n.at<double>(1,1) - n.at<double>(2,2) - n.at<double>(3,3);
+
+		// af + ak + ap + fk + fp + kp - lo - gj - nd - eb - ci - dm
+		double c_val =  n.at<double>(0,0) * n.at<double>(1,1) +  n.at<double>(0,0) * n.at<double>(2,2) + n.at<double>(0,0) * n.at<double>(3,3)
+				+ n.at<double>(1,1) * n.at<double>(2,2) + n.at<double>(1,1) * n.at<double>(3,3) + n.at<double>(2,2) * n.at<double>(3,3)
+				- n.at<double>(2,3) * n.at<double>(3,2) - n.at<double>(3,1) * n.at<double>(1,3) - n.at<double>(0,1) * n.at<double>(1,0)
+				- n.at<double>(0,2) * n.at<double>(2,0) - n.at<double>(0,3) * n.at<double>(3,0) - n.at<double>(2,1) * n.at<double>(1,2);
+
+		//- afk - afp - akp + alo + agj + anh + bek + bep - bgi - bhm - cej + cip + cif - clm + dfm - dio + dkm - ekn - fkp + flo + jgp - jho - gln + nhk
+		double d_val = -(n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,2))	//afk
+			 - (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(3,3))	//afp
+			 - (n.at<double>(0,0) * n.at<double>(3,3) * n.at<double>(2,2))	//akp
+			 + (n.at<double>(0,0) * n.at<double>(2,3) * n.at<double>(3,2))	//alo
+			 + (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,1))	//agj
+			 + (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(3,1))	//ahn
+			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,2))	//bek
+			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(3,3))	//bep
+			 - (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(3,0))	//bhm
+			 - (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,0))	//bgi
+			 - (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,1))	//cej
+			 + (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,0))	//cfi
+			 + (n.at<double>(0,2) * n.at<double>(2,0) * n.at<double>(3,3))	//cip
+			 - (n.at<double>(0,2) * n.at<double>(2,3) * n.at<double>(3,0))	//clm
+			 + (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(3,0))	//dfm
+			 - (n.at<double>(0,3) * n.at<double>(2,0) * n.at<double>(3,2))	//dio
+			 + (n.at<double>(0,3) * n.at<double>(2,2) * n.at<double>(3,0))	//dkm
+			 - (n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,1))	//ekn
+			 - (n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,3))	//fkp
+			 + (n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,2))	//flo
+			 - (n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,1))	//gln
+			 + (n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,3))	//gjp
+			 - (n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,2))	//hjo
+			 + (n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,1));	//hkn
+
+		//afkp - aflo - agjp + ahjo + agln - ahkn - bekp + belo - bglm + bgip - bhio + bhkm + cejp - celn - cfip + cflm + chin - chjm + dekn - dejo + dfio - dfkm - dgin + dgjm
+		double e_val =  (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,3))	//afkp
+			 - (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,2))	//aflo
+			 - (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,3))	//agjp
+			 + (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,2))	//ahjo
+			 + (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,1))	//agln
+			 - (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,1))	//ahkn
+			 - (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,3))	//bekp
+			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,3) * n.at<double>(3,2))	//belo
+			 + (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,0) * n.at<double>(3,3))	//bgip
+			 - (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,0))	//bglm
+			 - (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(2,0) * n.at<double>(3,2))	//bhio
+			 + (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,0))	//bhkm
+			 + (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,1) * n.at<double>(3,3))	//cejp
+			 - (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,3) * n.at<double>(3,1))	//celn
+			 - (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,0) * n.at<double>(3,3))	//cfip
+			 + (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,0))	//cflm
+			 + (n.at<double>(0,2) * n.at<double>(1,3) * n.at<double>(2,0) * n.at<double>(3,1))	//chin
+			 - (n.at<double>(0,2) * n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,0))	//chjm
+			 - (n.at<double>(0,3) * n.at<double>(1,0) * n.at<double>(2,1) * n.at<double>(3,2))	//dejo
+			 + (n.at<double>(0,3) * n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,1))	//dekn
+			 + (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(2,0) * n.at<double>(3,2))	//dfio
+			 - (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,0))	//dfkm
+			 - (n.at<double>(0,3) * n.at<double>(1,2) * n.at<double>(2,0) * n.at<double>(3,1))	//dgin
+			 + (n.at<double>(0,3) * n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,0));	//dgjm
+
+	//determinant = lapda^4 + (-ci - hn) * lapda^2 + (-dgjm +bglm +chin -belo)
+	//	double dist =
+	double vals[5],x[21],wr[21],wi[21],quad[2];	//wr holds the real values, while wi holds the imaginary values
+	vals[0] = a_val;
+	vals[1] = b_val;
+	vals[2] = c_val;
+	vals[3] = d_val;
+	vals[4] = e_val;
+	// initialize estimate for 1st root pair
+	quad[0] = 2.71828e-1;
+	quad[1] = 3.14159e-1;
+	// get roots
+	get_quads(vals,4,quad,x);
+	int numr = roots(x,4,wr,wi);
+	double zmax = wr[0];
+	cout << endl << "Roots (" << numr << " found):" << endl;
+	for (int i=0;i<4;i++) {
+		if ((wr[i] != 0.0) || (wi[i] != 0.0)){
+			cout << wr[i] << " " << wi[i] << "I" << endl;
+			if(zmax<wr[i])
+				zmax = wr[i];
+		}
+	}
+	// (N -Zmax*I) v = 0
+	cout<<"zmax = "<<zmax<<endl;
+	Mat nzi = n - zmax * Mat::ones(4,4,CV_64F);
+	Mat eigenVals, eigenVecs;
+	eigen(nzi,eigenVals, eigenVecs);	//returns 4 vectors in row format, first 2 are the same as the last 2 but mirrored (negative)
+	cout<<"eigen vectors:\n"<<eigenVecs<<endl;
+	cout<<"eigen values:\n"<<eigenVals<<endl;
+}
+
+/*
+ *	the first 4 calculate the center of rotation
+ *	after that rotation is calculated
+ */
+int CalculateRotation(Mat img)
+{
+	//TODO: update values
+	int boardHeight = 4;
+	int boardWidth = 6;
+	Size cbSize = Size(boardHeight,boardWidth);
+
+	vector<Point2d> imagePoints;
+	bool found = false;
+
+	//detect chessboard corners
+	try {
+		found = findChessboardCorners(img, cbSize, imagePoints,
+				CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
+				+ CALIB_CB_FAST_CHECK);
+	} catch (Exception e) {
+		cout<<"we had an error here"<<e.what()<<endl;
+	}
+
+	CvScalar w = CV_RGB(255,255,255);
+	CvScalar o = CV_RGB(128,128,128);
+
+	for (int i = 0; i < imagePoints.size(); i++)
+	{
+		if(i == boardHeight-1 || i == boardHeight*(boardWidth - 1))
+			circle(img, imagePoints[i], 4 , o);
+		else
+			circle(img, imagePoints[i], 4 , w);
+	}
+
+	//	drawChessboardCorners(img, cbSize, Mat(imagePoints), found);
+	//find camera orientation if the chessboard corners have been found
+	if ( found)
+	{
+		//		cout<<"\n<----------- Estimated pose -------------->"<<endl;
+		Mat rvec = Mat(Size(3,1), CV_64F);
+		Mat tvec = Mat(Size(3,1), CV_64F);
+
+		//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
+		vector<Point3d> boardPoints;
+
+		//generate vectors for the points on the chessboard
+		for (int i=0; i<boardWidth; i++)
+		{
+			for (int j=0; j<boardHeight; j++)
+			{
+				boardPoints.push_back( Point3d( double(i), double(j), 0.0) );
+			}
+		}
+		line(img, imagePoints[0],imagePoints[boardHeight-1],w);
+		line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
+		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+
+		cout<<"tvec = "<<tvec<<endl;
+		Mat rmat;
+		Rodrigues(rvec,rmat);
+		cout<<"rotation matrix = "<<rmat<<endl;
+		double a_abs, b_abs, c_abs, d_abs;
+		Mat det, m;
+
+		switch(rndx)
+		{
+		case 0:
+			a = tvec;
+			cout<<"a = "<< a <<endl;
+			x1 = rmat;
+			rndx++;
+			break;
+		case 1:
+			b = tvec;
+			cout<<"b = "<< b <<endl;
+			rndx++;
+			break;
+		case 2:
+			c = tvec;
+			cout<<"c = "<< c <<endl;
+			rndx++;
+			break;
+		case 3:
+			d = tvec;
+			cout<<"d = "<< d <<endl;
+			x2 = rmat;
+			rndx++;
+			// |q|^2 -2qa - |a|^2 = |q|^2 -2qb - |b|^2
+			// 2q(b-a) = |a|^2 - |b|^2
+			// 2[ bx - ax, by - ay, bz - az] [qx;  = [|a|^2 - |b|^2 ;
+			// 2[ cx - ax, cy - ay, cz - az]  qy;  =  |a|^2 - |c|^2 ;
+			// 2[ dx - ax, dy - ay, dz - az]  qz]  =  |a|^2 - |d|^2 ]
+
+			m = (Mat_<double>(3,3) << b.at<double>(0,0) - a.at<double>(0,0), b.at<double>(1,0) - a.at<double>(1,0), b.at<double>(2,0) - a.at<double>(2,0),
+					c.at<double>(0,0) - a.at<double>(0,0), c.at<double>(1,0) - a.at<double>(1,0), c.at<double>(2,0) - a.at<double>(2,0),
+					d.at<double>(0,0) - a.at<double>(0,0), d.at<double>(1,0) - a.at<double>(1,0), d.at<double>(2,0) - a.at<double>(2,0));
+
+			a_abs = sqrt(pow(a.at<double>(0,0),2) + pow(a.at<double>(1,0),2) + pow(a.at<double>(2,0),2)) ;
+			b_abs = sqrt(pow(b.at<double>(0,0),2) + pow(b.at<double>(1,0),2) + pow(b.at<double>(2,0),2));
+			c_abs = sqrt(pow(c.at<double>(0,0),2) + pow(c.at<double>(1,0),2) + pow(c.at<double>(2,0),2));
+			d_abs = sqrt(pow(d.at<double>(0,0),2) + pow(d.at<double>(1,0),2) + pow(d.at<double>(2,0),2));
+			det = (Mat_<double>(3,1) <<	pow(a_abs,2) - pow(b_abs,2),
+					pow(a_abs,2) - pow(c_abs,2),
+					pow(a_abs,2) - pow(d_abs,2));
+			cout << "det = "<<det <<endl;
+			// 2 M * q = D
+			// 2 q = M^-1 * D
+			// q = 0.5 * M^-1 * D
+			q = 0.5 * m.inv() * det;
+			cout << "\nq = " << q <<endl;
+			cout << "\n<--------------------------------------------------------->\n"<<endl;
+			break;
+		default:
+			if(rndx >= 4){
+			cout<<"\nprevious rotation:\n"<<x2<<endl;
+			cout<<"current rotation:\n"<<rmat<<endl;
+			determineRotation(rmat, x2);
+			x2 = rmat;
+			rndx++;
+			}
+			break;
+		}
 		return 1;
 	}
 	else
@@ -713,7 +1365,7 @@ int main() {
 	Mat imgMat, element, grayImg;
 	IplImage* cv_image ;
 	bool running = false;
-	ndx = u = d = l = r =  0;
+	ndx = rndx = u = l = r =  0;
 	cv_image = cvCreateImageHeader(cvSize(1280,1024), IPL_DEPTH_8U, 3);
 
 	/*
@@ -728,15 +1380,16 @@ int main() {
 		distortion = Mat::zeros(5, 1, CV_64F);
 		intrinsics = Mat::eye(3, 3, CV_64F);
 
-		distortion = (Mat_<double>(5,1) << 3.8654777889913724e+001, -3.8245991379523409e-001,
-				3.9884910642621724e-001, 1.4881952204747112e-001,
-				-1.0394776844313427e-004 );
-		intrinsics =  (Mat_<double>(3,3) << 2.4321094911390839e+004, 0., 4.8782427879579103e+002, 0.,
-				3.0850178156461727e+004, 4.0423527036496580e+002, 0., 0., 1.) ;
+		distortion = (Mat_<double>(5,1) << 7.1382655859702908e+001, -6.7509394728083327e-001,
+			       3.5208124899178711e-001, -3.6677289190204306e-002,
+			       -7.0415118500865041e-005 );
+		intrinsics =  (Mat_<double>(3,3) << 5.7301009474144659e+004, 0., 6.3334059778234075e+002, 0.,
+			       6.9675230432774188e+004, 5.3154756593783020e+002, 0., 0., 1. ) ;
 
 		running = true;
 	}
 	bool printP = false;
+	bool rotateP = false;
 
 	tvecOld1 = Mat(Size(3,1), CV_64F);
 	tvecOld2 = Mat(Size(3,1), CV_64F);
@@ -759,10 +1412,14 @@ int main() {
 
 		if(printP)
 			getChessOrientation(grayImg);
+		if(rotateP)
+			if(CalculateRotation(grayImg))
+				rotateP = false;
 
+		if(ndx % 5 == 0 && ndx != 0)
+			printP = false;
 		imshow("result", grayImg);
-		if(ndx == 200)
-			running =false;
+
 		switch(waitKey(1))
 		{
 		case 27:	//esc
@@ -773,73 +1430,55 @@ int main() {
 		case 's':
 			printP = !printP;
 			cout<<"\nS pressed."<<endl;
-			//			/*
-			//			 * check out this code: https://github.com/MasteringOpenCV/code
-			//			 * from "Mastering OpenCV with Practical Computer Vision Projects by Daniel Lelis Baggio" http://image2measure.net/files/Mastering_OpenCV.pdf
-			//			 * chapter 2 could be the answer to my problem
-			//			 */
-			//
-			//
-			//			getChessOrientation(grayImg);
-			//			imshow("result", imgMat);
+			break;
+		case 'p':
+			rotateP = !rotateP;
+			cout<<"\nP pressed."<<endl;
 			break;
 		default:
 			break;
 		}
-		//		if(ndx>=200)
-		//			running=false;
+		if(ndx>=200)
+			running=false;
 	}
 
-//	if(u!=0)
-//	{
-		avg = 0;
-	cout<<"\nThe difference in x is:\n"<<endl;
-		for(int i = 0; i<ndx-1; i++)
-		{
-			cout << fixed <<setprecision(4)<< avals[i]<<"\t";
-			avg += avals[i];
-		}
-		cout<<"\nThe average difference in x is "<<avg/(ndx-1)<<"\n"<<endl;
-//	}
-//
-//	if(r!=0)
-//	{
-		avg = 0;
-		cout<<"\nThe difference in y is:\n"<<endl;
-		for(int i = 0; i<ndx-1; i++)
-		{
-			cout << fixed <<setprecision(4)<< bvals[i]<<"\t";
-			avg += bvals[i];
-		}
-		cout<<"\nThe average difference in y is "<<avg/(ndx-1)<<"\n"<<endl;
-//	}
-//
-//	if(d!=0)
-//	{
-		avg = 0;
-		cout<<"\nThe difference in z is:\n"<<endl;
-		for(int i = 0; i<ndx-1; i++)
-		{
-			cout << fixed <<setprecision(4)<< cvals[i]<<"\t";
-			avg += cvals[i];
-		}
-		cout<<"\nThe average difference in z is "<<avg/(ndx-1)<<"\n"<<endl;
-//	}
-//
-//	if(l!=0)
-//	{
-//		avg = 0;
-//		for(int i = 0; i<l; i++)
-//		{
-//			cout << fixed <<setprecision(4)<< dvals[i]<<"\t";
-//			avg += dvals[i];
-//		}
-//		cout<<"\nThe average angle for D is "<<avg/l<<"\n"<<endl;
-//	}
-//
-//	if(ndx!=0)
-//		cout << "there were "<< badMeh << " bad measurements"<<endl;
+	//	avg = 0;
+	//	cout<<"\nThe difference in x is:\n"<<endl;
+	//	for(int i = 0; i<ndx; i++)
+	//	{
+	//		cout << fixed <<setprecision(2)<< avals[i]<<"\t";
+	//		avg += avals[i];
+	//	}
+	//	cout<<"\nThe average difference in x is "<<avg/(ndx-1)<<"\n"<<endl;
+	//
+	//	avg = 0;
+	//	cout<<"\nThe difference in y is:\n"<<endl;
+	//	for(int i = 0; i<ndx; i++)
+	//	{
+	//		cout << fixed <<setprecision(2)<< bvals[i]<<"\t";
+	//		avg += bvals[i];
+	//	}
+	//	cout<<"\nThe average difference in y is "<<avg/(ndx-1)<<"\n"<<endl;
+	//
+	//	avg = 0;
+	//	cout<<"\nThe difference in z is:\n"<<endl;
+	//	for(int i = 0; i<ndx; i++)
+	//	{
+	//		cout << fixed <<setprecision(2)<< cvals[i]<<"\t";
+	//		avg += cvals[i];
+	//	}
+	//	cout<<"\nThe average difference in z is "<<avg/(ndx-1)<<"\n"<<endl;
 
+	avg = 0;
+	cout<<"\nThe difference in x is:\n"<<endl;
+	for(int i = 1; i-1<floor(ndx/5)-1; i++)
+	{
+		cout << fixed <<setprecision(4)<< dvals[i-1]<<"\t";
+		if((i-1)%5 == 0)
+			cout<<"\n";
+		avg += dvals[i-1];
+	}
+	cout<<"\nThe average difference in x is "<<avg/(floor(ndx/5)-1)<<"\n"<<endl;
 	pct->ExitCamera();
 	pct = NULL;
 	return 0;
