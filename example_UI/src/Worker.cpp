@@ -11,14 +11,20 @@
 #endif
 
 #include <iostream>
+
+#include <Eigen>
+#include <complex>
+
 #include <opencv2/core/core.hpp>
 #include "opencv2/core/utility.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include <opencv2/calib3d/calib3d.hpp>
+#include "opencv2/core/eigen.hpp"
 
 #include "opencv2/videoio/videoio_c.h"
+//#include <LU>
 
 // wxwidgets includes
 #include "wx/wxprec.h"
@@ -28,10 +34,10 @@
   #include "wx/wx.h"
 #endif //precompiled headers
 
-// main header include
 #include "Worker.h"
 using namespace cv;
 using namespace std;
+using namespace Eigen;
 
 Worker::Worker(MyFrame *frame) : wxThread( ){
 	m_pFrame = frame;
@@ -178,8 +184,28 @@ void *Worker::Entry( )
 		//		detailEnhance(grayImg,grayImg);	//opencv-3.0.0 beta function
 		cvtColor(grayImg, imgMat, COLOR_GRAY2RGB);
 		m_pFrame->getGrayWindow()->DrawCam(&imgMat);
+
+		//test if there was a rotation
+		m_b = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
+		determineRotation(m_a, m_b);
+		m_a = m_b;
 //		imshow("test", imgMat);
-//		waitKey(1);
+		switch(waitKey(1))
+		{
+//		case 27:	//esc
+//			cout << "Esc key is pressed by user." << endl;
+//			cout << "Closing application." << endl;
+//			running = false;
+//			break;
+		case 32:	//space
+			wxMessageBox("Click 'OK' to continue.",
+					"Action required",
+					wxOK | wxICON_INFORMATION,
+					m_pFrame);
+			break;
+		default:
+			break;
+		}
 	}
 //	pct->ExitCamera();
 
@@ -194,207 +220,295 @@ void Worker::calibrate()
 
 	calcHist(&imgMat);
 
-	//		detailEnhance(grayImg,grayImg);	//opencv-3.0.0 beta function
 	cvtColor(imgMat, imgMat, COLOR_GRAY2RGB);
 	m_pFrame->getGrayWindow()->DrawCam(&imgMat);
-	Mat rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
+	Mat a = pct->calculateTranslation(Rect(0, 0, r->width, r->y));
 
 	wxMessageBox("Change the angle of the x-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
 			"Action required",
 			wxOK | wxICON_INFORMATION,
 			m_pFrame);
 
-	Mat rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-//
-	Mat a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
-	Mat b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
-
-//	Mat a = (Mat_<double>(3,1) <<	-0.0380843713614482, 0.8556574439214423, -0.5161394378652218);
-//	Mat b = (Mat_<double>(3,1) <<	0.03423277676286986, -0.8406947007822847,  -0.5404262549799819);
-
-	Mat u1 = pct->calculateU(a, b);
-	cout<<"a = " <<a<<endl;
-	cout<<"b = " <<b<<endl;
-	cout<<"\n"<<endl;
-
-	double t = 0.5 * (u1.at<double>(0,0) + u1.at<double>(1,1) + u1.at<double>(2,2) - 1);
-	double theta = acos(fmod(t,1) ) * (180/M_PI);	//theta = arcos(1/2[A11 + A22 + A33 - 1])
-
-	double ex1 = (u1.at<double>(2,1) - u1.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
-	double ex2 = (u1.at<double>(0,2) - u1.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
-	double ex3 = (u1.at<double>(1,0) - u1.at<double>(0,1))/(2*sin(theta * M_PI / 180.0));
-
-	wxMessageBox("Change the angle of the x-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
-			"Action required",
-			wxOK | wxICON_INFORMATION,
-			m_pFrame);
-
-	rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	a = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
-//	a = (Mat_<double>(3,1) <<	-0.01815673977444407,  0.860831436039724,  -0.50856619188317);
+	Mat b = pct->calculateTranslation(Rect(0, 0, r->width, r->y));
 
 	wxMessageBox("Change the angle of the y-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
 			"Action required",
 			wxOK | wxICON_INFORMATION,
 			m_pFrame);
 
-	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	b = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
-//	b = (Mat_<double>(3,1) <<	-0.01796244869473578,  0.8493643840377958,  -0.5275011787332657);
-
-	Mat u2 = pct->calculateU(a, b);
-	cout<<"a = " <<a<<endl;
-	cout<<"b = " <<b<<endl;
-	cout<<"\n"<<endl;
-
-	t = 0.5 * (u2.at<double>(0,0) + u2.at<double>(1,1) + u2.at<double>(2,2) - 1);
-	theta = acos(fmod(t,1) )* (180/M_PI) ;	//theta = arcos(1/2[A11 + A22 + A33 - 1])
-
-	double ey1 = (u2.at<double>(2,1) - u2.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
-	double ey2 = (u2.at<double>(0,2) - u2.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
-	double ey3 = (u2.at<double>(1,0) - u2.at<double>(0,1))/(2*sin(theta * M_PI / 180.0));
-
-	wxMessageBox("Change the angle of the x-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
-			"Action required",
-			wxOK | wxICON_INFORMATION,
-			m_pFrame);
-
-	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
-//	a = (Mat_<double>(3,1) <<	-0.01837536096184191, 0.8473801210449836,  -0.5306687069795155);
+	Mat c = pct->calculateTranslation(Rect(0, 0, r->width, r->y));
 
 	wxMessageBox("Change the angle of the z-rotation by ~1 degree (or ~1mm).\nClick 'OK' when you are done.",
 			"Action required",
 			wxOK | wxICON_INFORMATION,
 			m_pFrame);
 
-	rMat2 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-	b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
-//	b = (Mat_<double>(3,1) <<	-0.01605614547087797,  0.8482646454936019,  -0.5293290955523152);
+	m_a = m_b = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
+	Mat d = m_a.col(3);
 
-	Mat u3 = pct->calculateU(a, b);
-	cout<<"a = " <<a<<endl;
-	cout<<"b = " <<b<<endl;
-	cout<<"\n"<<endl;
+	Mat m = (Mat_<double>(3,3) << b.at<double>(0,0) - a.at<double>(0,0), b.at<double>(1,0) - a.at<double>(1,0), b.at<double>(2,0) - a.at<double>(2,0),
+			c.at<double>(0,0) - a.at<double>(0,0), c.at<double>(1,0) - a.at<double>(1,0), c.at<double>(2,0) - a.at<double>(2,0),
+			d.at<double>(0,0) - a.at<double>(0,0), d.at<double>(1,0) - a.at<double>(1,0), d.at<double>(2,0) - a.at<double>(2,0));
 
-	t = 0.5 * (u3.at<double>(0,0) + u3.at<double>(1,1) + u3.at<double>(2,2) - 1) ;
-	theta = acos( fmod(t,1)) * (180.0 / M_PI);	//theta = arccos(1/2[A11 + A22 + A33 - 1])
+	double a_abs = sqrt(pow(a.at<double>(0,0),2) + pow(a.at<double>(1,0),2) + pow(a.at<double>(2,0),2)) ;
+	double b_abs = sqrt(pow(b.at<double>(0,0),2) + pow(b.at<double>(1,0),2) + pow(b.at<double>(2,0),2));
+	double c_abs = sqrt(pow(c.at<double>(0,0),2) + pow(c.at<double>(1,0),2) + pow(c.at<double>(2,0),2));
+	double d_abs = sqrt(pow(d.at<double>(0,0),2) + pow(d.at<double>(1,0),2) + pow(d.at<double>(2,0),2));
+	Mat det = (Mat_<double>(3,1) <<	pow(a_abs,2) - pow(b_abs,2),
+			pow(a_abs,2) - pow(c_abs,2),
+			pow(a_abs,2) - pow(d_abs,2));
+	cout << "det = "<<det <<endl;
+	// 2 M * q = D
+	// 2 q = M^-1 * D
+	// q = 0.5 * M^-1 * D
+	rotPoint = 0.5 * m.inv() * det;
+	cout << "\ncommon rotation point = " << rotPoint <<endl;
 
-	double ez1 = (u3.at<double>(2,1) - u3.at<double>(1,2))/(2*sin(theta * M_PI / 180.0));
-	double ez2 = (u3.at<double>(0,2) - u3.at<double>(2,0))/(2*sin(theta * M_PI / 180.0));
-	double ez3 = (u3.at<double>(1,0) - u3.at<double>(0,1))/(2*sin(theta * M_PI / 180.0));
-
-	Mat uCamStage = (Mat_<double>(3,3) << ex1, ey1, ez1,
-			ex2, ey2, ez2,
-			ex3, ey3, ez3);
-
-	cout<<"camera angels:"<<endl;
-
-	t = uCamStage.at<double>(2,0);
-//	cout<<"t = "<<t<<endl;
-	thetaY = asin(fmod(t,1))*180/M_PI;
-	cout<<"thetaY = "<<thetaY<<endl;
-
-	t = uCamStage.at<double>(2,2)/sqrt( 1 - pow(  uCamStage.at<double>(2,0), 2) );
-//	cout<<"t = "<<t<<endl;
-	thetaX = acos( t ) * 180/M_PI;
-	cout<<"thetaX = "<<thetaX<<endl;
-
-	t = uCamStage.at<double>(0,0)/sqrt( 1 - pow(  uCamStage.at<double>(2,0), 2) );
-//	cout<<"t = "<<t<<endl;
-	thetaZ = acos( t ) * 180/M_PI;
-	cout<<"thetaZ = "<<thetaZ<<endl;
-
-	cout << "\nunitx = "<< sqrt(pow(ex1, 2) + pow(ex2, 2) + pow(ex3, 2)) <<endl;
-	cout << "unity = "<< sqrt(pow(ey1, 2) + pow(ey2, 2) + pow(ey3, 2)) <<endl;
-	cout << "unitz = "<< sqrt(pow(ez1, 2) + pow(ez2, 2) + pow(ez3, 2)) <<endl;
-
-	Mat uCS1 = uCamStage.inv();
-	cout<<"\nuCamStage = "<<uCamStage <<endl;
-	cout<<"\n\nuCS1 = "<<uCS1 <<endl;
-
-	cout<<"\nnew stuff comming"<<endl;
-
-
-	//test data
-//	rMat1 = pct->calculateRotationMatrix(Rect(0, 0, r->width, r->y));
-//	a = (Mat_<double>(3,1) <<	rMat1.at<double>(0,2), rMat1.at<double>(1,2), rMat1.at<double>(2,2));
-	a = (Mat_<double>(3,1) <<	-0.0380843713614482, 0.8556574439214423, -0.5161394378652218);
-
-	Mat a1 = (Mat_<double>(3,1)<<uCS1.at<double>(0,0)*a.at<double>(0,0) + uCS1.at<double>(1,0)*a.at<double>(0,0) + uCS1.at<double>(2,0)*a.at<double>(0,0),
-						uCS1.at<double>(0,1)*a.at<double>(1,0) + uCS1.at<double>(1,1)*a.at<double>(1,0) + uCS1.at<double>(2,1)*a.at<double>(1,0),
-						uCS1.at<double>(0,2)*a.at<double>(2,0) + uCS1.at<double>(1,2)*a.at<double>(2,0) + uCS1.at<double>(2,2)*a.at<double>(2,0));
-	cout<<"a1 = " <<a<<endl;
-
-	wxMessageBox("Change the location of the chip.\nClick 'OK' when you are done.",
-			"Action required",
-			wxOK | wxICON_INFORMATION,
-			m_pFrame);
-
-//	rMat2 = pct->calculateRotationMatrix(*r);
-//	b = (Mat_<double>(3,1) <<	-0.8205612951246357, 0.03776898284020541, -0.5703092712542877);		//enkel 2mm over x rot
-	b = (Mat_<double>(3,1) <<	-0.01605614547087797, 0.8482646454936019,  -0.5293290955523152);		//2mm over x,y&z rot
-//	b = (Mat_<double>(3,1) <<	rMat2.at<double>(0,2), rMat2.at<double>(1,2), rMat2.at<double>(2,2));
-	Mat b1 = (Mat_<double>(3,1)<<uCS1.at<double>(0,0)*b.at<double>(0,0) + uCS1.at<double>(1,0)*b.at<double>(0,0) + uCS1.at<double>(2,0)*b.at<double>(0,0),
-							uCS1.at<double>(0,1)*b.at<double>(1,0) + uCS1.at<double>(1,1)*b.at<double>(1,0) + uCS1.at<double>(2,1)*b.at<double>(1,0),
-							uCS1.at<double>(0,2)*b.at<double>(2,0) + uCS1.at<double>(1,2)*b.at<double>(2,0) + uCS1.at<double>(2,2)*b.at<double>(2,0));
-	cout<<"b1 = " <<b1<<endl;
-	Mat uStage = pct->calculateU(a1, b1);
-//	Mat uStage = pct->calculateU(a, b);
-
-	t = fmod(uStage.at<double>(2,0),1);
-	thetaY = asin(t)*180/M_PI;
-	cout<<"thetaY = "<<thetaY<<endl;
-	t = fmod(uStage.at<double>(2,2),1)/sqrt( 1 - pow( fmod(uStage.at<double>(2,0),1) , 2) );
-	thetaX = acos( t ) * 180/M_PI;
-	cout<<"thetaX = "<<thetaX<<endl;
-	t = fmod(uStage.at<double>(0,0),1)/sqrt( 1 - pow( fmod(uStage.at<double>(2,0),1) , 2) );
-	thetaZ = acos( t ) * 180/M_PI;
-	cout<<"thetaZ = "<<thetaZ<<endl;
-
-	//test
-	t = (fmod(uStage.at<double>(2,2),1)/cos(thetaY*M_PI/180));
-	cout << "x = " << acos(fmod(t,1))*180/M_PI <<endl;
-	t = (fmod(uStage.at<double>(0,0),1)/cos(thetaY*M_PI/180));
-	cout<<"z = " << acos(fmod(t,1))*180/M_PI<<endl;
-
-	std::ostringstream s;
-	s << "" << thetaX ;
-	m_pFrame->setX1Txt(s.str());
-
-	s.str("");
-	s.clear();
-	s << "" << thetaY ;
-	m_pFrame->setY1Txt(s.str());
-
-	s.str("");
-	s.clear();
-	s << "" << thetaZ ;
-	m_pFrame->setZ1Txt(s.str());
-
-	//alternative from: http://planning.cs.uiuc.edu/node103.html or http://nghiaho.com/?page_id=846
-	thetaY = atan2(-uStage.at<double>(2,0),sqrt (uStage.at<double>(2,1)*uStage.at<double>(2,1) + uStage.at<double>(2,2)*uStage.at<double>(2,2))) * 180.0 / M_PI;
-	thetaX = atan2(uStage.at<double>(2,1),uStage.at<double>(2,2)) * 180.0 / M_PI;
-	thetaZ = atan2(uStage.at<double>(1,0),uStage.at<double>(0,0)) * 180.0 / M_PI;
-
-	s.str("");
-	s.clear();
-	s << "" << thetaX ;
-	m_pFrame->setX2Txt(s.str());
-
-	s.str("");
-	s.clear();
-	s << "" << thetaY ;
-	m_pFrame->setY2Txt(s.str());
-
-	s.str("");
-	s.clear();
-	s << "" << thetaZ ;
-	m_pFrame->setZ2Txt(s.str());
+//	std::ostringstream s;
+//	s << "" << thetaX ;
+//	m_pFrame->setX1Txt(s.str());
+//
+//	s.str("");
+//	s.clear();
+//	s << "" << thetaY ;
+//	m_pFrame->setY1Txt(s.str());
+//
+//	s.str("");
+//	s.clear();
+//	s << "" << thetaZ ;
+//	m_pFrame->setZ1Txt(s.str());
+//
+//	//alternative from: http://planning.cs.uiuc.edu/node103.html or http://nghiaho.com/?page_id=846
+//	thetaY = atan2(-uStage.at<double>(2,0),sqrt (uStage.at<double>(2,1)*uStage.at<double>(2,1) + uStage.at<double>(2,2)*uStage.at<double>(2,2))) * 180.0 / M_PI;
+//	thetaX = atan2(uStage.at<double>(2,1),uStage.at<double>(2,2)) * 180.0 / M_PI;
+//	thetaZ = atan2(uStage.at<double>(1,0),uStage.at<double>(0,0)) * 180.0 / M_PI;
+//
+//	s.str("");
+//	s.clear();
+//	s << "" << thetaX ;
+//	m_pFrame->setX2Txt(s.str());
+//
+//	s.str("");
+//	s.clear();
+//	s << "" << thetaY ;
+//	m_pFrame->setY2Txt(s.str());
+//
+//	s.str("");
+//	s.clear();
+//	s << "" << thetaZ ;
+//	m_pFrame->setZ2Txt(s.str());
 
 //	Mat e = (Mat_<double>(3,3) << 0,-e3,e2, e3,0,-e1, -e2,e1,0);
 //	cout<<"e = " <<e<<endl;
 
+}
+
+void Worker::determineRotation(Mat a, Mat b)
+{
+	Mat a1 = Mat::zeros(4,4,CV_64F);
+	Mat b1 = Mat::zeros(4,4,CV_64F);
+
+	Mat a2 = Mat::zeros(4,4,CV_64F);
+	Mat b2 = Mat::zeros(4,4,CV_64F);
+
+	Mat a3 = Mat::zeros(4,4,CV_64F);
+	Mat b3 = Mat::zeros(4,4,CV_64F);
+
+	//Setting up data
+	//first set
+	a1.at<double>(0,1) = -(a.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a1.at<double>(1,0) = a.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	a1.at<double>(0,2) = -(a.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a1.at<double>(2,0) = a.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a1.at<double>(0,3) = -(a.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a1.at<double>(3,0) = a.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a1.at<double>(1,2) = a.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a1.at<double>(2,1) = -(a.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a1.at<double>(1,3) = -(a.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a1.at<double>(3,1) = a.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a1.at<double>(2,3) = -(a.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a1.at<double>(3,2) = a.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	b1.at<double>(0,1) = -(b.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b1.at<double>(1,0) = b.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	b1.at<double>(0,2) = -(b.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b1.at<double>(2,0) = b.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b1.at<double>(0,3) = -(b.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b1.at<double>(3,0) = b.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b1.at<double>(1,2) = b.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b1.at<double>(2,1) = -(b.at<double>(2,0) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b1.at<double>(1,3) = -(b.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b1.at<double>(3,1) = b.at<double>(1,0) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b1.at<double>(2,3) = -(b.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b1.at<double>(3,2) = b.at<double>(0,0) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	//second set
+	a2.at<double>(0,1) = -(a.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a2.at<double>(1,0) = a.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	a2.at<double>(0,2) = -(a.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a2.at<double>(2,0) = a.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a2.at<double>(0,3) = -(a.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a2.at<double>(3,0) = a.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a2.at<double>(1,2) = a.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a2.at<double>(2,1) = -(a.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a2.at<double>(1,3) = -(a.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a2.at<double>(3,1) = a.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a2.at<double>(2,3) = -(a.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a2.at<double>(3,2) = a.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	b2.at<double>(0,1) = -(b.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b2.at<double>(1,0) = b.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	b2.at<double>(0,2) = -(b.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b2.at<double>(2,0) = b.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b2.at<double>(0,3) = -(b.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b2.at<double>(3,0) = b.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b2.at<double>(1,2) = b.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b2.at<double>(2,1) = -(b.at<double>(2,1) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b2.at<double>(1,3) = -(b.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b2.at<double>(3,1) = b.at<double>(1,1) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b2.at<double>(2,3) = -(b.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b2.at<double>(3,2) = b.at<double>(0,1) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	//third set
+	a3.at<double>(0,1) = -(a.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a3.at<double>(1,0) = a.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	a3.at<double>(0,2) = -(a.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a3.at<double>(2,0) = a.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a3.at<double>(0,3) = -(a.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a3.at<double>(3,0) = a.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a3.at<double>(1,2) = a.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	a3.at<double>(2,1) = -(a.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	a3.at<double>(1,3) = -(a.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	a3.at<double>(3,1) = a.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	a3.at<double>(2,3) = -(a.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	a3.at<double>(3,2) = a.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	b3.at<double>(0,1) = -(b.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b3.at<double>(1,0) = b.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+	b3.at<double>(0,2) = -(b.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b3.at<double>(2,0) = b.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b3.at<double>(0,3) = -(b.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b3.at<double>(3,0) = b.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b3.at<double>(1,2) = b.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0);
+	b3.at<double>(2,1) = -(b.at<double>(2,2) + a.at<double>(2,3) - rotPoint.at<double>(2,0));
+	b3.at<double>(1,3) = -(b.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0));
+	b3.at<double>(3,1) = b.at<double>(1,2) + a.at<double>(1,3) - rotPoint.at<double>(1,0);
+	b3.at<double>(2,3) = -(b.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0));
+	b3.at<double>(3,2) = b.at<double>(0,2) + a.at<double>(0,3) - rotPoint.at<double>(0,0);
+
+	Mat n = (a1.t() * b1) + (a2.t() * b2) + (a3.t() * b3);
+
+	Mat n_com = Mat::zeros(4,4,CV_64FC2);// (Mat_< Vec2f >(4, 4) << n.at<double>(0,0), n.at<double>(0,1), n.at<double>(0,2), n.at<double>(0,3),
+	for(int i = 0; i<4; i++)
+	{
+		for(int j = 0; j<4; j++)
+		{
+			n_com.at<Vec2d>(i,j)[0] = n.at<double>(i,j);
+			n_com.at<Vec2d>(i,j)[1] = 0;
+		}
+	}
+
+	MatrixXcd eigenN;
+	cv2eigen(n_com,eigenN);
+	ComplexEigenSolver<MatrixXcd> ces;
+	ces.compute(eigenN);
+	cout << "The eigenvalues of A are:" << endl << ces.eigenvalues() << endl;
+
+	complex<double> zmax = ces.eigenvalues()[0];
+	complex<double> tcom;
+	int com_idx[4] = {0,-1,-1,-1};
+	int count = 1;
+
+	for (int i=1;i<4;i++) {
+		tcom = ces.eigenvalues()[i];
+		if (roundf(tcom.real()) > roundf(zmax.real()))
+		{
+			cout<< tcom.real() <<" > " << zmax.real() <<endl;
+			zmax = ces.eigenvalues()[i];
+			com_idx[count-1] = -1;
+			count = 0;
+			com_idx[count] = i;
+			count++;
+		}
+		else if (roundf(tcom.real()) == roundf(zmax.real()))
+		{
+			cout<<"2 equal numbers"<<endl;
+			com_idx[count] = i;
+			count++;
+		}
+		cout<<"numbers are: " << com_idx[0]<< com_idx[1]<< com_idx[2]<<com_idx[3]<<endl;
+	}
+	cout << "\nThe eigenvectors are:" << endl << ces.eigenvectors();
+	double m_w, m_x, m_y, m_z, m_angle;
+	cout << "\nThe first eigenvector is:\n"  << ces.eigenvectors().col(com_idx[0]);
+	VectorXcd v = ces.eigenvectors().col(com_idx[0]);
+	tcom = v(0);
+	m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+	m_angle = acos(m_w)* 360/M_PI;//(360/M_PI);
+	cout<<"\nangle = "<<m_angle<<endl;
+	tcom = v(1);
+	m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+	tcom = v(2);
+	m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+	tcom = v(3);
+	m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	if(com_idx[1]!=-1 && com_idx[1]>com_idx[0])
+	{
+		cout << "\nThe second eigenvector is:\n" << ces.eigenvectors().col(com_idx[1]);
+		v = ces.eigenvectors().col(com_idx[1]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
+	if(com_idx[2]!=-1)
+	{
+		cout << "\nThe third eigenvector is:\n" << ces.eigenvectors().col(com_idx[2]);
+		v = ces.eigenvectors().col(com_idx[2]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
+	if(com_idx[3]!=-1)
+	{
+		cout << "\nThe fourth eigenvector is:\n" << ces.eigenvectors().col(com_idx[3]);
+		v = ces.eigenvectors().col(com_idx[3]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
 }
 
 Rect* Worker::getROI()

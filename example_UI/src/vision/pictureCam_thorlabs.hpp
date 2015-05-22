@@ -70,6 +70,7 @@ public:
 	Cuc480 getCamera();
 
 	cv::Mat calculateRotationMatrix(cv::Rect r);
+	cv::Mat calculateTranslation(cv::Rect r);
 	cv::Mat calculateU(cv::Mat, cv::Mat);
 	cv::Mat getLastCross();
 

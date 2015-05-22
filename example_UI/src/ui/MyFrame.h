@@ -54,8 +54,8 @@ public:
 	void setY2Txt(wxString s);
 	void setZ2Txt(wxString s);
 
-	bool initialized = false;
-	bool resizingAllowed = true;
+	bool initialized;
+	bool resizingAllowed;
 
 private:
 	// event handlers (these functions should _not_ be virtual)

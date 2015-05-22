@@ -38,6 +38,8 @@ MyFrame::MyFrame(const wxString& title, const wxPoint& pos, const wxSize& size)
 : wxFrame(NULL, wxID_ANY, title, pos, size,  wxMINIMIZE_BOX | \
 		wxMAXIMIZE_BOX | wxSYSTEM_MENU | wxRESIZE_BORDER | wxCAPTION | wxCLOSE_BOX | wxCLIP_CHILDREN )
 {
+	initialized = false;
+	resizingAllowed = true;
 	SetMaxClientSize(wxSize(1920,1080));
 	SetMinClientSize(wxSize(1024, 720));
 	Maximize(true);

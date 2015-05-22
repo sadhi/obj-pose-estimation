@@ -34,6 +34,7 @@ public:
 	void calcHist(cv::Mat*);
 	void stop();
 	cv::Rect *getROI();
+	void determineRotation(cv::Mat, cv::Mat);
 
 private:
 	MyFrame			*m_pFrame;
@@ -45,6 +46,8 @@ private:
 
 	double thetaX, thetaY, thetaZ;
 	cv::Rect * r;
+	cv::Mat rotPoint;
+	cv::Mat m_a, m_b;
 
 	void calibrate();
 };

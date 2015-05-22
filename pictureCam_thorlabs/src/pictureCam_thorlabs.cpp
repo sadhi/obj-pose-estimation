@@ -13,18 +13,19 @@
 #include <math.h>
 
 #include "pictureCam_thorlabs.hpp"
-//#include <Eigen>
+#include <complex>
+#include <Eigen>
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/gpu/gpu.hpp>
-//#include "opencv2/core/eigen.hpp"
+#include "opencv2/core/eigen.hpp"
 //#include <LU>
 
 using namespace cv;
 using namespace std;
-//using namespace Eigen;
+using namespace Eigen;
 
 //probably should not define them here like this, but it makes it a lot easier for me
 pictureCam_thorlabs *pct;
@@ -644,31 +645,7 @@ int getChessOrientation(Mat img)
 		else
 		{
 			cout<<"\nindex = "<<ndx<<endl;
-			//			double d1 = pow(pow(tvec.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
-			//			d1 = roundf(d1 * 100) / 100;	//round to 2 decimals
-			////			cout<<"tvec , tvecOld1 = " << d1 << endl;
-			//			double d2 = pow(pow(tvec.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvec.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvec.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
-			//			d2 = roundf(d2 * 100) / 100;	//round to 2 decimals
-			////			cout<<"tvec , tvecOld2 = " << d2 << endl;
-			//
-			//			double d3 = pow(pow(tvecO.at<double>(0,0) - tvecOld1.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld1.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld1.at<double>(2,0),2), 0.5);
-			//			d3 = roundf(d3 * 100) / 100;	//round to 2 decimals
-			////			cout<<"\ntvecO , tvecOld1 = " << d3 << endl;
-			//			double d4 = pow(pow(tvecO.at<double>(0,0) - tvecOld2.at<double>(0,0),2) + pow(tvecO.at<double>(1,0) - tvecOld2.at<double>(1,0),2) + pow(tvecO.at<double>(2,0) - tvecOld2.at<double>(2,0),2), 0.5);
-			//			d4 = roundf(d4 * 100) / 100;	//round to 2 decimals
-			//			cout<<"tvecO , tvecOld2 = " << d4 << endl;
 
-			//			if(d4>d3 && d1>2)	//a different origin was taken when compared to the last measurement
-			//			{
-			//				avals[ndx] = tvec.at<double>(0,0) ;//- tvecOld2.at<double>(0,0);
-			//				bvals[ndx] = tvec.at<double>(1,0) ;//- tvecOld2.at<double>(1,0);
-			//				cvals[ndx] = tvec.at<double>(2,0) ;//- tvecOld2.at<double>(2,0);
-			//
-			//				tvecOld1 = tvecO;
-			//				tvecOld2 = tvec;
-			//			}
-			//			else	//same origin
-			//			{
 			avals[ndx] = roundf(tvec.at<double>(0,0)*100)/100 ;//- tvecOld1.at<double>(0,0);
 			bvals[ndx] = roundf(tvec.at<double>(1,0)*100)/100 ;//- tvecOld1.at<double>(1,0);
 			cvals[ndx] = roundf(tvec.at<double>(2,0)) ;//- tvecOld1.at<double>(2,0);
@@ -693,331 +670,7 @@ int getChessOrientation(Mat img)
 	}
 }
 
-// Given two sets of 3D points, find the rotation + translation + scale
-// which best maps the first set to the second.
-// Source: http://en.wikipedia.org/wiki/Kabsch_algorithm
 
-// The input 3D points are stored as columns.
-//Eigen::Affine3d Find3DAffineTransform(Eigen::Matrix3Xd in, Eigen::Matrix3Xd out) {
-//
-//	// Default output
-//	Eigen::Affine3d A;
-//	A.linear() = Eigen::Matrix3d::Identity(3, 3);
-//	A.translation() = Eigen::Vector3d::Zero();
-//
-//	if (in.cols() != out.cols())
-//		throw "Find3DAffineTransform(): input data mis-match";
-//
-//	// First find the scale, by finding the ratio of sums of some distances,
-//	// then bring the datasets to the same scale.
-//	double dist_in = 0, dist_out = 0;
-//	Eigen::Vector3d v;
-//	cout<<"in = "<<in<<endl;
-//	for (int col = 0; col < in.cols()-1; col++) {
-//		v = (in.col(col+1) - in.col(col));
-//		cout<<"v = "<<v<<endl;
-//		dist_in  += v.norm();
-//		v = (out.col(col+1) - out.col(col));
-//		dist_out += v.norm();
-//	}
-//	if (dist_in <= 0 || dist_out <= 0)
-//		return A;
-//	double scale = dist_out/dist_in;
-//	out /= scale;
-//
-//	// Find the centroids then shift to the origin
-//	Eigen::Vector3d in_ctr = Eigen::Vector3d::Zero();
-//	Eigen::Vector3d out_ctr = Eigen::Vector3d::Zero();
-//	for (int col = 0; col < in.cols(); col++) {
-//		in_ctr  += in.col(col);
-//		out_ctr += out.col(col);
-//	}
-//	in_ctr /= in.cols();
-//	out_ctr /= out.cols();
-//	for (int col = 0; col < in.cols(); col++) {
-//		in.col(col)  -= in_ctr;
-//		out.col(col) -= out_ctr;
-//	}
-//
-//	// SVD
-//	Eigen::MatrixXd Cov = in * out.transpose();
-//	Eigen::JacobiSVD<Eigen::MatrixXd> svd(Cov, Eigen::ComputeThinU | Eigen::ComputeThinV);
-//
-//	// Find the rotation
-//	MatrixXd temp = (svd.matrixV() * svd.matrixU().transpose());
-//	double d = temp.determinant();
-//	if (d > 0)
-//		d = 1.0;
-//	else
-//		d = -1.0;
-//	Eigen::Matrix3d I = Eigen::Matrix3d::Identity(3, 3);
-//	I(2, 2) = d;
-//	Eigen::Matrix3d R = svd.matrixV() * I * svd.matrixU().transpose();
-//
-//	// The final transform
-//	A.linear() = scale * R;
-//	A.translation() = scale*(out_ctr - R*in_ctr);
-//
-//	return A;
-//}
-
-int roots(double *a,int n,double *wr,double *wi)
-{
-    double sq,b2,c,disc;
-    int m, numroots;
-
-    m = n;
-    numroots = 0;
-    while (m > 1) {
-        b2 = -0.5*a[m-2];
-        c = a[m-1];
-        disc = b2*b2-c;
-        if (disc < 0.0) {                   // complex roots
-            sq = sqrt(-disc);
-            wr[m-2] = b2;
-            wi[m-2] = sq;
-            wr[m-1] = b2;
-            wi[m-1] = -sq;
-            numroots+=2;
-        }
-        else {                              // real roots
-            sq = sqrt(disc);
-            wr[m-2] = fabs(b2)+sq;
-            if (b2 < 0.0) wr[m-2] = -wr[m-2];
-            if (wr[m-2] == 0)
-                wr[m-1] = 0;
-            else {
-                wr[m-1] = c/wr[m-2];
-                numroots+=2;
-            }
-            wi[m-2] = 0.0;
-            wi[m-1] = 0.0;
-        }
-        m -= 2;
-    }
-    if (m == 1) {
-       wr[0] = -a[0];
-       wi[0] = 0.0;
-       numroots++;
-    }
-    return numroots;
-}
-//
-// Deflate polynomial 'a' by dividing out 'quad'. Return quotient
-// polynomial in 'b' and error metric based on remainder in 'err'.
-//
-void deflate(double *a,int n,double *b,double *quad,double *err)
-{
-    double r,s;
-    int i;
-
-    r = quad[1];
-    s = quad[0];
-
-    b[1] = a[1] - r;
-
-    for (i=2;i<=n;i++){
-        b[i] = a[i] - r * b[i-1] - s * b[i-2];
-    }
-    *err = fabs(b[n])+fabs(b[n-1]);
-}
-//
-// Find quadratic factor using Bairstow's method (quadratic Newton method).
-// A number of ad hoc safeguards are incorporated to prevent stalls due
-// to common difficulties, such as zero slope at iteration point, and
-// convergence problems.
-//
-// Bairstow's method is sensitive to the starting estimate. It is possible
-// for convergence to fail or for 'wild' values to trigger an overflow.
-//
-// It is advisable to institute traps for these problems. (To do!)
-//
-void find_quad(double *a,int n,double *b,double *quad,double *err, int *iter)
-{
-    double *c,dn,dr,ds,drn,dsn,eps,r,s;
-    int i;
-
-    c = new double [n+1];
-    c[0] = 1.0;
-    r = quad[1];
-    s = quad[0];
-    eps = 1e-15;
-    *iter = 1;
-
-    do {
-        if (*iter > 500) break;
-        if (((*iter) % 200) == 0) {
-            eps *= 10.0;
-		}
-		b[1] = a[1] - r;
-		c[1] = b[1] - r;
-
-		for (i=2;i<=n;i++){
-			b[i] = a[i] - r * b[i-1] - s * b[i-2];
-			c[i] = b[i] - r * c[i-1] - s * c[i-2];
-		}
-		dn=c[n-1] * c[n-3] - c[n-2] * c[n-2];
-		drn=b[n] * c[n-3] - b[n-1] * c[n-2];
-		dsn=b[n-1] * c[n-1] - b[n] * c[n-2];
-
-        if (fabs(dn) < 1e-10) {
-            if (dn < 0.0) dn = -1e-8;
-            else dn = 1e-8;
-        }
-        dr = drn / dn;
-        ds = dsn / dn;
-		r += dr;
-		s += ds;
-        (*iter)++;
-    } while ((fabs(dr)+fabs(ds)) > eps);
-    quad[0] = s;
-    quad[1] = r;
-    *err = fabs(ds)+fabs(dr);
-    delete [] c;
-}
-//
-// Differentiate polynomial 'a' returning result in 'b'.
-//
-void diff_poly(double *a,int n,double *b)
-{
-    double coef;
-    int i;
-
-    coef = (double)n;
-    b[0] = 1.0;
-    for (i=1;i<n;i++) {
-        b[i] = a[i]*((double)(n-i))/coef;
-    }
-}
-//
-// Attempt to find a reliable estimate of a quadratic factor using modified
-// Bairstow's method with provisions for 'digging out' factors associated
-// with multiple roots.
-//
-// This resursive routine operates on the principal that differentiation of
-// a polynomial reduces the order of all multiple roots by one, and has no
-// other roots in common with it. If a root of the differentiated polynomial
-// is a root of the original polynomial, there must be multiple roots at
-// that location. The differentiated polynomial, however, has lower order
-// and is easier to solve.
-//
-// When the original polynomial exhibits convergence problems in the
-// neighborhood of some potential root, a best guess is obtained and tried
-// on the differentiated polynomial. The new best guess is applied
-// recursively on continually differentiated polynomials until failure
-// occurs. At this point, the previous polynomial is accepted as that with
-// the least number of roots at this location, and its estimate is
-// accepted as the root.
-//
-void recurse(double *a,int n,double *b,int m,double *quad,
-    double *err,int *iter)
-{
-    double *c,*x,rs[2],tst;
-
-    if (fabs(b[m]) < 1e-16) m--;    // this bypasses roots at zero
-    if (m == 2) {
-        quad[0] = b[2];
-        quad[1] = b[1];
-        *err = 0;
-        *iter = 0;
-        return;
-    }
-    c = new double [m+1];
-    x = new double [n+1];
-    c[0] = x[0] = 1.0;
-    rs[0] = quad[0];
-    rs[1] = quad[1];
-    *iter = 0;
-    find_quad(b,m,c,rs,err,iter);
-    tst = fabs(rs[0]-quad[0])+fabs(rs[1]-quad[1]);
-    if (*err < 1e-12) {
-        quad[0] = rs[0];
-        quad[1] = rs[1];
-    }
-// tst will be 'large' if we converge to wrong root
-    if (((*iter > 5) && (tst < 1e-4)) || ((*iter > 20) && (tst < 1e-1))) {
-        diff_poly(b,m,c);
-        recurse(a,n,c,m-1,rs,err,iter);
-        quad[0] = rs[0];
-        quad[1] = rs[1];
-    }
-    delete [] x;
-    delete [] c;
-}
-//
-// Top level routine to manage the determination of all roots of the given
-// polynomial 'a', returning the quadratic factors (and possibly one linear
-// factor) in 'x'.
-//
-void get_quads(double *a,int n,double *quad,double *x)
-{
-    double *b,*z,err,tmp;
-    int iter,i,m;
-
-    if ((tmp = a[0]) != 1.0) {
-        a[0] = 1.0;
-        for (i=1;i<=n;i++) {
-            a[i] /= tmp;
-        }
-    }
-    if (n == 2) {
-        x[0] = a[1];
-        x[1] = a[2];
-        return;
-    }
-    else if (n == 1) {
-        x[0] = a[1];
-        return;
-    }
-    m = n;
-    b = new double [n+1];
-    z = new double [n+1];
-    b[0] = 1.0;
-    for (i=0;i<=n;i++) {
-        z[i] = a[i];
-        x[i] = 0.0;
-    }
-    do {
-        if (n > m) {
-            quad[0] = 3.14159e-1;
-            quad[1] = 2.78127e-1;
-        }
-        do {                    // This loop tries to assure convergence
-            for (i=0;i<5;i++) {
-                find_quad(z,m,b,quad,&err,&iter);
-                if ((err > 1e-7) || (iter > 500)) {
-                    diff_poly(z,m,b);
-                    recurse(z,m,b,m-1,quad,&err,&iter);
-                }
-                deflate(z,m,b,quad,&err);
-                if (err < 0.001) break;
-                quad[0] = rand() % 8 - 4.0;
-                quad[1] = rand() % 8 - 4.0;
-            }
-            if (err > 0.01) {
-                cout << "Error! Convergence failure in quadratic x^2 + r*x + s." << endl;
-                cout << "Enter new trial value for 'r': ";
-                cin >> quad[1];
-                cout << "Enter new trial value for 's' ( 0 to exit): ";
-                cin >> quad[0];
-                if (quad[0] == 0) exit(1);
-            }
-        } while (err > 0.01);
-        x[m-2] = quad[1];
-        x[m-1] = quad[0];
-        m -= 2;
-        for (i=0;i<=m;i++) {
-            z[i] = b[i];
-        }
-    } while (m > 2);
-    if (m == 2) {
-        x[0] = b[1];
-        x[1] = b[2];
-    }
-    else x[0] = b[1];
-    delete [] z;
-    delete [] b;
-}
 
 /*
  * @param a: 4x4 matrix
@@ -1038,180 +691,199 @@ void determineRotation(Mat a, Mat b)
 
 	//Setting up data
 	//first set
-	a1.at<double>(0,1) = -(a.at<double>(0,0));
-	a1.at<double>(1,0) = a.at<double>(0,0);
-	a1.at<double>(0,2) = -(a.at<double>(1,0));
-	a1.at<double>(2,0) = a.at<double>(1,0);
-	a1.at<double>(0,3) = -(a.at<double>(2,0));
-	a1.at<double>(3,0) = a.at<double>(2,0);
-	a1.at<double>(1,2) = a.at<double>(2,0);
-	a1.at<double>(2,1) = -(a.at<double>(2,0));
-	a1.at<double>(1,3) = -(a.at<double>(1,0));
-	a1.at<double>(3,1) = a.at<double>(1,0);
-	a1.at<double>(2,3) = -(a.at<double>(0,0));
-	a1.at<double>(3,2) = a.at<double>(0,0);
+	a1.at<double>(0,1) = -(a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
+	a1.at<double>(1,0) = a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
+	a1.at<double>(0,2) = -(a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
+	a1.at<double>(2,0) = a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
+	a1.at<double>(0,3) = -(a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
+	a1.at<double>(3,0) = a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
+	a1.at<double>(1,2) = a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
+	a1.at<double>(2,1) = -(a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
+	a1.at<double>(1,3) = -(a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
+	a1.at<double>(3,1) = a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
+	a1.at<double>(2,3) = -(a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
+	a1.at<double>(3,2) = a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
 
-	b1.at<double>(0,1) = -(b.at<double>(0,0));
-	b1.at<double>(1,0) = b.at<double>(0,0);
-	b1.at<double>(0,2) = -(b.at<double>(1,0));
-	b1.at<double>(2,0) = b.at<double>(1,0);
-	b1.at<double>(0,3) = -(b.at<double>(2,0));
-	b1.at<double>(3,0) = b.at<double>(2,0);
-	b1.at<double>(1,2) = b.at<double>(2,0);
-	b1.at<double>(2,1) = -(b.at<double>(2,0));
-	b1.at<double>(1,3) = -(b.at<double>(1,0));
-	b1.at<double>(3,1) = b.at<double>(1,0);
-	b1.at<double>(2,3) = -(b.at<double>(0,0));
-	b1.at<double>(3,2) = b.at<double>(0,0);
+	b1.at<double>(0,1) = -(b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
+	b1.at<double>(1,0) = b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
+	b1.at<double>(0,2) = -(b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
+	b1.at<double>(2,0) = b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
+	b1.at<double>(0,3) = -(b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
+	b1.at<double>(3,0) = b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
+	b1.at<double>(1,2) = b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
+	b1.at<double>(2,1) = -(b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
+	b1.at<double>(1,3) = -(b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
+	b1.at<double>(3,1) = b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
+	b1.at<double>(2,3) = -(b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
+	b1.at<double>(3,2) = b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
 
 	//second set
-	a2.at<double>(0,1) = -(a.at<double>(0,1));
-	a2.at<double>(1,0) = a.at<double>(0,1);
-	a2.at<double>(0,2) = -(a.at<double>(1,1));
-	a2.at<double>(2,0) = a.at<double>(1,1);
-	a2.at<double>(0,3) = -(a.at<double>(2,1));
-	a2.at<double>(3,0) = a.at<double>(2,1);
-	a2.at<double>(1,2) = a.at<double>(2,1);
-	a2.at<double>(2,1) = -(a.at<double>(2,1));
-	a2.at<double>(1,3) = -(a.at<double>(1,1));
-	a2.at<double>(3,1) = a.at<double>(1,1);
-	a2.at<double>(2,3) = -(a.at<double>(0,1));
-	a2.at<double>(3,2) = a.at<double>(0,1);
+	a2.at<double>(0,1) = -(a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
+	a2.at<double>(1,0) = a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
+	a2.at<double>(0,2) = -(a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
+	a2.at<double>(2,0) = a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
+	a2.at<double>(0,3) = -(a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
+	a2.at<double>(3,0) = a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
+	a2.at<double>(1,2) = a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
+	a2.at<double>(2,1) = -(a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
+	a2.at<double>(1,3) = -(a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
+	a2.at<double>(3,1) = a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
+	a2.at<double>(2,3) = -(a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
+	a2.at<double>(3,2) = a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
 
-	b2.at<double>(0,1) = -(b.at<double>(0,1));
-	b2.at<double>(1,0) = b.at<double>(0,1);
-	b2.at<double>(0,2) = -(b.at<double>(1,1));
-	b2.at<double>(2,0) = b.at<double>(1,1);
-	b2.at<double>(0,3) = -(b.at<double>(2,1));
-	b2.at<double>(3,0) = b.at<double>(2,1);
-	b2.at<double>(1,2) = b.at<double>(2,1);
-	b2.at<double>(2,1) = -(b.at<double>(2,1));
-	b2.at<double>(1,3) = -(b.at<double>(1,1));
-	b2.at<double>(3,1) = b.at<double>(1,1);
-	b2.at<double>(2,3) = -(b.at<double>(0,1));
-	b2.at<double>(3,2) = b.at<double>(0,1);
+	b2.at<double>(0,1) = -(b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
+	b2.at<double>(1,0) = b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
+	b2.at<double>(0,2) = -(b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
+	b2.at<double>(2,0) = b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
+	b2.at<double>(0,3) = -(b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
+	b2.at<double>(3,0) = b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
+	b2.at<double>(1,2) = b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
+	b2.at<double>(2,1) = -(b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
+	b2.at<double>(1,3) = -(b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
+	b2.at<double>(3,1) = b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
+	b2.at<double>(2,3) = -(b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
+	b2.at<double>(3,2) = b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
 
 	//third set
-	a3.at<double>(0,1) = -(a.at<double>(0,2));
-	a3.at<double>(1,0) = a.at<double>(0,2);
-	a3.at<double>(0,2) = -(a.at<double>(1,2));
-	a3.at<double>(2,0) = a.at<double>(1,2);
-	a3.at<double>(0,3) = -(a.at<double>(2,2));
-	a3.at<double>(3,0) = a.at<double>(2,2);
-	a3.at<double>(1,2) = a.at<double>(2,2);
-	a3.at<double>(2,1) = -(a.at<double>(2,2));
-	a3.at<double>(1,3) = -(a.at<double>(1,2));
-	a3.at<double>(3,1) = a.at<double>(1,2);
-	a3.at<double>(2,3) = -(a.at<double>(0,2));
-	a3.at<double>(3,2) = a.at<double>(0,2);
+	a3.at<double>(0,1) = -(a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
+	a3.at<double>(1,0) = a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
+	a3.at<double>(0,2) = -(a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
+	a3.at<double>(2,0) = a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
+	a3.at<double>(0,3) = -(a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
+	a3.at<double>(3,0) = a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
+	a3.at<double>(1,2) = a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
+	a3.at<double>(2,1) = -(a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
+	a3.at<double>(1,3) = -(a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
+	a3.at<double>(3,1) = a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
+	a3.at<double>(2,3) = -(a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
+	a3.at<double>(3,2) = a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
 
-	b3.at<double>(0,1) = -(b.at<double>(0,2));
-	b3.at<double>(1,0) = b.at<double>(0,2);
-	b3.at<double>(0,2) = -(b.at<double>(1,2));
-	b3.at<double>(2,0) = b.at<double>(1,2);
-	b3.at<double>(0,3) = -(b.at<double>(2,2));
-	b3.at<double>(3,0) = b.at<double>(2,2);
-	b3.at<double>(1,2) = b.at<double>(2,2);
-	b3.at<double>(2,1) = -(b.at<double>(2,2));
-	b3.at<double>(1,3) = -(b.at<double>(1,2));
-	b3.at<double>(3,1) = b.at<double>(1,2);
-	b3.at<double>(2,3) = -(b.at<double>(0,2));
-	b3.at<double>(3,2) = b.at<double>(0,2);
+	b3.at<double>(0,1) = -(b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
+	b3.at<double>(1,0) = b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
+	b3.at<double>(0,2) = -(b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
+	b3.at<double>(2,0) = b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
+	b3.at<double>(0,3) = -(b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
+	b3.at<double>(3,0) = b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
+	b3.at<double>(1,2) = b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
+	b3.at<double>(2,1) = -(b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
+	b3.at<double>(1,3) = -(b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
+	b3.at<double>(3,1) = b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
+	b3.at<double>(2,3) = -(b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
+	b3.at<double>(3,2) = b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
 
 	n = (a1.t() * b1) + (a2.t() * b2) + (a3.t() * b3);
 
-	//use laplace on a 4x4 matrix to get the zmax value (a*x^4 + b*x^3 + c*x^2 + d*x + e = 0)
-		double a_val = 1;
-		double b_val = -n.at<double>(0,0) - n.at<double>(1,1) - n.at<double>(2,2) - n.at<double>(3,3);
-
-		// af + ak + ap + fk + fp + kp - lo - gj - nd - eb - ci - dm
-		double c_val =  n.at<double>(0,0) * n.at<double>(1,1) +  n.at<double>(0,0) * n.at<double>(2,2) + n.at<double>(0,0) * n.at<double>(3,3)
-				+ n.at<double>(1,1) * n.at<double>(2,2) + n.at<double>(1,1) * n.at<double>(3,3) + n.at<double>(2,2) * n.at<double>(3,3)
-				- n.at<double>(2,3) * n.at<double>(3,2) - n.at<double>(3,1) * n.at<double>(1,3) - n.at<double>(0,1) * n.at<double>(1,0)
-				- n.at<double>(0,2) * n.at<double>(2,0) - n.at<double>(0,3) * n.at<double>(3,0) - n.at<double>(2,1) * n.at<double>(1,2);
-
-		//- afk - afp - akp + alo + agj + anh + bek + bep - bgi - bhm - cej + cip + cif - clm + dfm - dio + dkm - ekn - fkp + flo + jgp - jho - gln + nhk
-		double d_val = -(n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,2))	//afk
-			 - (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(3,3))	//afp
-			 - (n.at<double>(0,0) * n.at<double>(3,3) * n.at<double>(2,2))	//akp
-			 + (n.at<double>(0,0) * n.at<double>(2,3) * n.at<double>(3,2))	//alo
-			 + (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,1))	//agj
-			 + (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(3,1))	//ahn
-			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,2))	//bek
-			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(3,3))	//bep
-			 - (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(3,0))	//bhm
-			 - (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,0))	//bgi
-			 - (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,1))	//cej
-			 + (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,0))	//cfi
-			 + (n.at<double>(0,2) * n.at<double>(2,0) * n.at<double>(3,3))	//cip
-			 - (n.at<double>(0,2) * n.at<double>(2,3) * n.at<double>(3,0))	//clm
-			 + (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(3,0))	//dfm
-			 - (n.at<double>(0,3) * n.at<double>(2,0) * n.at<double>(3,2))	//dio
-			 + (n.at<double>(0,3) * n.at<double>(2,2) * n.at<double>(3,0))	//dkm
-			 - (n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,1))	//ekn
-			 - (n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,3))	//fkp
-			 + (n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,2))	//flo
-			 - (n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,1))	//gln
-			 + (n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,3))	//gjp
-			 - (n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,2))	//hjo
-			 + (n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,1));	//hkn
-
-		//afkp - aflo - agjp + ahjo + agln - ahkn - bekp + belo - bglm + bgip - bhio + bhkm + cejp - celn - cfip + cflm + chin - chjm + dekn - dejo + dfio - dfkm - dgin + dgjm
-		double e_val =  (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,3))	//afkp
-			 - (n.at<double>(0,0) * n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,2))	//aflo
-			 - (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,3))	//agjp
-			 + (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,2))	//ahjo
-			 + (n.at<double>(0,0) * n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,1))	//agln
-			 - (n.at<double>(0,0) * n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,1))	//ahkn
-			 - (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,3))	//bekp
-			 + (n.at<double>(0,1) * n.at<double>(1,0) * n.at<double>(2,3) * n.at<double>(3,2))	//belo
-			 + (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,0) * n.at<double>(3,3))	//bgip
-			 - (n.at<double>(0,1) * n.at<double>(1,2) * n.at<double>(2,3) * n.at<double>(3,0))	//bglm
-			 - (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(2,0) * n.at<double>(3,2))	//bhio
-			 + (n.at<double>(0,1) * n.at<double>(1,3) * n.at<double>(2,2) * n.at<double>(3,0))	//bhkm
-			 + (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,1) * n.at<double>(3,3))	//cejp
-			 - (n.at<double>(0,2) * n.at<double>(1,0) * n.at<double>(2,3) * n.at<double>(3,1))	//celn
-			 - (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,0) * n.at<double>(3,3))	//cfip
-			 + (n.at<double>(0,2) * n.at<double>(1,1) * n.at<double>(2,3) * n.at<double>(3,0))	//cflm
-			 + (n.at<double>(0,2) * n.at<double>(1,3) * n.at<double>(2,0) * n.at<double>(3,1))	//chin
-			 - (n.at<double>(0,2) * n.at<double>(1,3) * n.at<double>(2,1) * n.at<double>(3,0))	//chjm
-			 - (n.at<double>(0,3) * n.at<double>(1,0) * n.at<double>(2,1) * n.at<double>(3,2))	//dejo
-			 + (n.at<double>(0,3) * n.at<double>(1,0) * n.at<double>(2,2) * n.at<double>(3,1))	//dekn
-			 + (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(2,0) * n.at<double>(3,2))	//dfio
-			 - (n.at<double>(0,3) * n.at<double>(1,1) * n.at<double>(2,2) * n.at<double>(3,0))	//dfkm
-			 - (n.at<double>(0,3) * n.at<double>(1,2) * n.at<double>(2,0) * n.at<double>(3,1))	//dgin
-			 + (n.at<double>(0,3) * n.at<double>(1,2) * n.at<double>(2,1) * n.at<double>(3,0));	//dgjm
-
-	//determinant = lapda^4 + (-ci - hn) * lapda^2 + (-dgjm +bglm +chin -belo)
-	//	double dist =
-	double vals[5],x[21],wr[21],wi[21],quad[2];	//wr holds the real values, while wi holds the imaginary values
-	vals[0] = a_val;
-	vals[1] = b_val;
-	vals[2] = c_val;
-	vals[3] = d_val;
-	vals[4] = e_val;
-	// initialize estimate for 1st root pair
-	quad[0] = 2.71828e-1;
-	quad[1] = 3.14159e-1;
-	// get roots
-	get_quads(vals,4,quad,x);
-	int numr = roots(x,4,wr,wi);
-	double zmax = wr[0];
-	cout << endl << "Roots (" << numr << " found):" << endl;
-	for (int i=0;i<4;i++) {
-		if ((wr[i] != 0.0) || (wi[i] != 0.0)){
-			cout << wr[i] << " " << wi[i] << "I" << endl;
-			if(zmax<wr[i])
-				zmax = wr[i];
+	Mat n_com = Mat::zeros(4,4,CV_64FC2);// (Mat_< Vec2f >(4, 4) << n.at<double>(0,0), n.at<double>(0,1), n.at<double>(0,2), n.at<double>(0,3),
+	for(int i = 0; i<4; i++)
+	{
+		for(int j = 0; j<4; j++)
+		{
+			n_com.at<Vec2d>(i,j)[0] = n.at<double>(i,j);
+			n_com.at<Vec2d>(i,j)[1] = 0;
 		}
 	}
-	// (N -Zmax*I) v = 0
-	cout<<"zmax = "<<zmax<<endl;
-	Mat nzi = n - zmax * Mat::ones(4,4,CV_64F);
-	Mat eigenVals, eigenVecs;
-	eigen(nzi,eigenVals, eigenVecs);	//returns 4 vectors in row format, first 2 are the same as the last 2 but mirrored (negative)
-	cout<<"eigen vectors:\n"<<eigenVecs<<endl;
-	cout<<"eigen values:\n"<<eigenVals<<endl;
+	//	Mat nzi = n_com - comIden;
+
+	MatrixXcd eigenN;// = MatrixXcf::Random(4,4);
+	cv2eigen(n_com,eigenN);
+	//	cout << "Here is a random 4x4 matrix, A:" << endl << eigenN << endl << endl;
+	ComplexEigenSolver<MatrixXcd> ces;
+	ces.compute(eigenN);
+	cout << "The eigenvalues of A are:" << endl << ces.eigenvalues() << endl;
+	complex<double> zmax = ces.eigenvalues()[0];
+	complex<double> tcom;
+	int com_idx[4] = {0,-1,-1,-1};
+	int count = 1;
+	for (int i=1;i<4;i++) {
+		tcom = ces.eigenvalues()[i];
+		if (roundf(tcom.real()) > roundf(zmax.real()))
+		{
+			cout<< tcom.real() <<" > " << zmax.real() <<endl;
+			zmax = ces.eigenvalues()[i];
+			com_idx[count-1] = -1;
+			count = 0;
+			com_idx[count] = i;
+			count++;
+		}
+		else if (roundf(tcom.real()) == roundf(zmax.real()))
+		{
+//			cout<<"2 equal numbers"<<endl;
+			com_idx[count] = i;
+			count++;
+		}
+//		cout<<"numbers are: " << com_idx[0]<< com_idx[1]<< com_idx[2]<<com_idx[3]<<endl;
+	}
+//	cout << "\nThe eigenvectors are:" << endl << ces.eigenvectors();
+	double m_w, m_x, m_y, m_z, m_angle;
+	cout << "\nThe first eigenvector is:\n"  << ces.eigenvectors().col(com_idx[0]);
+	VectorXcd v = ces.eigenvectors().col(com_idx[0]);
+	tcom = v(0);
+	m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+	m_angle = acos(m_w)* 360/M_PI;//(360/M_PI);
+	cout<<"\nangle = "<<m_angle<<endl;
+	tcom = v(1);
+	m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+	tcom = v(2);
+	m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+	tcom = v(3);
+	m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+	cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	if(com_idx[1]!=-1 && com_idx[1]>com_idx[0])
+	{
+		cout << "\nThe second eigenvector is:\n" << ces.eigenvectors().col(com_idx[1]);
+		v = ces.eigenvectors().col(com_idx[1]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
+	if(com_idx[2]!=-1)
+	{
+		cout << "\nThe third eigenvector is:\n" << ces.eigenvectors().col(com_idx[2]);
+		v = ces.eigenvectors().col(com_idx[2]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
+	if(com_idx[3]!=-1)
+	{
+		cout << "\nThe fourth eigenvector is:\n" << ces.eigenvectors().col(com_idx[3]);
+		v = ces.eigenvectors().col(com_idx[3]);
+		tcom = v(0);
+		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
+		m_angle = acos(m_w)* (360/M_PI);
+		cout<<"\nangle = "<<m_angle<<endl;
+		tcom = v(1);
+		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(2);
+		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
+		tcom = v(3);
+		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
+		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
+	}
 }
 
 /*
@@ -1275,6 +947,9 @@ int CalculateRotation(Mat img)
 		Mat rmat;
 		Rodrigues(rvec,rmat);
 		cout<<"rotation matrix = "<<rmat<<endl;
+		Mat rtMat = (Mat_<double>(3,4) <<	rmat.at<double>(0,0), rmat.at<double>(0,1), rmat.at<double>(0,2), tvec.at<double>(0,0),
+					rmat.at<double>(1,0), rmat.at<double>(1,1), rmat.at<double>(1,2), tvec.at<double>(1,0),
+					rmat.at<double>(2,0), rmat.at<double>(2,1), rmat.at<double>(2,2), tvec.at<double>(2,0));
 		double a_abs, b_abs, c_abs, d_abs;
 		Mat det, m;
 
@@ -1299,7 +974,7 @@ int CalculateRotation(Mat img)
 		case 3:
 			d = tvec;
 			cout<<"d = "<< d <<endl;
-			x2 = rmat;
+			x2 = rtMat;
 			rndx++;
 			// |q|^2 -2qa - |a|^2 = |q|^2 -2qb - |b|^2
 			// 2q(b-a) = |a|^2 - |b|^2
@@ -1329,9 +1004,9 @@ int CalculateRotation(Mat img)
 		default:
 			if(rndx >= 4){
 			cout<<"\nprevious rotation:\n"<<x2<<endl;
-			cout<<"current rotation:\n"<<rmat<<endl;
-			determineRotation(rmat, x2);
-			x2 = rmat;
+			cout<<"current rotation:\n"<<rtMat<<endl;
+			determineRotation(rtMat, x2);
+			x2 = rtMat;
 			rndx++;
 			}
 			break;

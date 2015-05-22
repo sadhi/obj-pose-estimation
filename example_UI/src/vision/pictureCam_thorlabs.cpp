@@ -510,15 +510,103 @@ Mat pictureCam_thorlabs::calculateRotationMatrix(Rect r)
 //	tvec = -rotationMatrix * tvec; 			// translation of inverse
 //	cout<<"T = " << tvec <<endl;
 
-	//[R.T|t]
-	Mat extr = (Mat_<double>(3,3) <<	rotationMatrix.at<double>(0,0), rotationMatrix.at<double>(0,1), rotationMatrix.at<double>(0,2),// tvec.at<double>(0,0),
-			rotationMatrix.at<double>(1,0), rotationMatrix.at<double>(1,1), rotationMatrix.at<double>(1,2),// tvec.at<double>(1,0),
-			rotationMatrix.at<double>(2,0), rotationMatrix.at<double>(2,1), rotationMatrix.at<double>(2,2));// tvec.at<double>(2,0),
+	//[R|t]
+	Mat extr = (Mat_<double>(3,4) <<	rotationMatrix.at<double>(0,0), rotationMatrix.at<double>(0,1), rotationMatrix.at<double>(0,2), tvec.at<double>(0,0),
+			rotationMatrix.at<double>(1,0), rotationMatrix.at<double>(1,1), rotationMatrix.at<double>(1,2), tvec.at<double>(1,0),
+			rotationMatrix.at<double>(2,0), rotationMatrix.at<double>(2,1), rotationMatrix.at<double>(2,2), tvec.at<double>(2,0));
 //					0,0,0,1);
 
-	cout<<"extr = " << extr <<"\n"<<endl;
+	cout<<"[R|t] = " << extr <<"\n"<<endl;
 //	return rotationMatrix;
 	return extr;
+}
+
+Mat pictureCam_thorlabs::calculateTranslation(Rect r)
+{
+	//TODO: these values should not be hardcoded
+	int boardHeight = 4;
+	int boardWidth = 6;
+	Size cbSize = Size(boardHeight,boardWidth);
+
+	vector<Point2d> imagePoints;
+	bool found = false;
+	Mat img = Mat(1024, 1280, CV_8UC3, getPcImageMemory());
+	cvtColor(img, img, COLOR_BGR2GRAY);
+//	resize(img, img, Size(0, 0), 0.5, 0s.5);
+	Scalar w = Scalar(255,255,255);
+	Scalar o = Scalar(128,128,128);
+	//detect chessboard corners
+	int key = 0;
+	while(!found)
+	{
+		render();
+
+		img = Mat(1024, 1280, CV_8UC3, getPcImageMemory());
+		img = img(r);	//get the sub-image we are looking at
+		cvtColor(img, img, COLOR_BGR2GRAY);
+		resize(img, img, Size(0, 0), 0.5, 0.5);
+		found = findChessboardCorners(img, cbSize, imagePoints,
+				CALIB_CB_ADAPTIVE_THRESH + CALIB_CB_NORMALIZE_IMAGE
+				+ CALIB_CB_FAST_CHECK);
+		for (int i = 0; i < imagePoints.size(); i++)
+		{
+			if(i == boardHeight-1 || i == boardHeight*(boardWidth - 1))
+				circle(img, imagePoints[i], 4 , o);
+			else
+				circle(img, imagePoints[i], 4 , w);
+		}
+		if(found)
+		{
+			line(img, imagePoints[0],imagePoints[boardHeight-1],w);
+			line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
+		}
+		imshow("test", img);
+		key = waitKey(1);
+		if (key==27)
+			break;
+	}
+
+	//	Mat intrinsics;
+	Mat rvec = Mat(Size(3,1), CV_64F);
+	tvec = Mat(Size(3,1), CV_64F);
+
+	//setup vectors to hold the chessboard corners in the chessboard coordinate system and in the image
+	vector<Point3d> boardPoints, framePoints;
+
+	//generate vectors for the points on the chessboard
+	for (int i=0; i<boardWidth; i++)
+	{
+		for (int j=0; j<boardHeight; j++)
+		{
+			boardPoints.push_back( Point3d( double(i), double(j), 0.0) );
+		}
+	}
+
+	//generate points in the reference frame
+	framePoints.push_back( Point3d( 0.0, 0.0, 0.0 ) );
+	framePoints.push_back( Point3d( 5.0, 0.0, 0.0 ) );
+	framePoints.push_back( Point3d( 0.0, 5.0, 0.0 ) );
+	framePoints.push_back( Point3d( 0.0, 0.0, 5.0 ) );
+
+	cout<<"lets solve it"<<endl;
+
+	//find the camera extrinsic parameters
+	//If the distortion is NULL/empty, the zero distortion coefficients are assumed
+	try {
+		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,0.95);	//the last value describes how accurate it should be (value should be between 0 - 1)
+	} catch (Exception e) {
+		cout<<"error @:"<<e.what()<<endl;
+	}
+	//			//show the pose estimation data
+	cout << fixed << setprecision(4) << "rvec = ["
+			<< rvec.at<double>(0,0) << ", "
+			<< rvec.at<double>(1,0) << ", "
+			<< rvec.at<double>(2,0) << "] \t" << "tvec = ["
+			<< tvec.at<double>(0,0) << ", "
+			<< tvec.at<double>(1,0) << ", "
+			<< tvec.at<double>(2,0) << "]" << endl;
+
+	return tvec;
 }
 
 Mat pictureCam_thorlabs::calculateU(Mat a, Mat b)

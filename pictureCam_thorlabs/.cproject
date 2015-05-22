@@ -27,6 +27,7 @@
 								<option id="gnu.cpp.compiler.option.include.paths.874207562" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;..\..\..\..\opencv\build\include&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;D:\Users\sadhi\Documents\Visual Studio 2013\Projects\Thorlabs Samples\include&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;..\..\..\..\Eigen&quot;"/>
 								</option>
 								<option id="gnu.cpp.compiler.option.dialect.std.950122380" name="Language standard" superClass="gnu.cpp.compiler.option.dialect.std" value="gnu.cpp.compiler.dialect.default" valueType="enumerated"/>
 								<option id="gnu.cpp.compiler.option.preprocessor.undef.1755947329" name="Undefined symbols (-U)" superClass="gnu.cpp.compiler.option.preprocessor.undef"/>
