@@ -798,7 +798,7 @@ void determineRotation(Mat a, Mat b)
 		tcom = ces.eigenvalues()[i];
 		if (roundf(tcom.real()) > roundf(zmax.real()))
 		{
-			cout<< tcom.real() <<" > " << zmax.real() <<endl;
+			//cout<< tcom.real() <<" > " << zmax.real() <<endl;
 			zmax = ces.eigenvalues()[i];
 			com_idx[count-1] = -1;
 			count = 0;
@@ -817,34 +817,34 @@ void determineRotation(Mat a, Mat b)
 	double m_w, m_x, m_y, m_z, m_angle;
 	cout << "\nThe first eigenvector is:\n"  << ces.eigenvectors().col(com_idx[0]);
 	VectorXcd v = ces.eigenvectors().col(com_idx[0]);
-	tcom = v(0);
+	tcom = v(3);
 	m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
-	m_angle = acos(m_w)* 360/M_PI;//(360/M_PI);
+	m_angle = 2 * acos(m_w)* (180/M_PI) ;//(360/M_PI)-180;
 	cout<<"\nangle = "<<m_angle<<endl;
-	tcom = v(1);
+	tcom = v(0);
 	m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
 	cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
-	tcom = v(2);
+	tcom = v(1);
 	m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
 	cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
-	tcom = v(3);
+	tcom = v(2);
 	m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
 	cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
 	if(com_idx[1]!=-1 && com_idx[1]>com_idx[0])
 	{
 		cout << "\nThe second eigenvector is:\n" << ces.eigenvectors().col(com_idx[1]);
 		v = ces.eigenvectors().col(com_idx[1]);
-		tcom = v(0);
+		tcom = v(3);
 		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
-		m_angle = acos(m_w)* (360/M_PI);
+		m_angle = 2 * acos(m_w)* (180/M_PI) ;//(360/M_PI);
 		cout<<"\nangle = "<<m_angle<<endl;
-		tcom = v(1);
+		tcom = v(0);
 		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(2);
+		tcom = v(1);
 		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(3);
+		tcom = v(2);
 		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
 	}
@@ -852,17 +852,17 @@ void determineRotation(Mat a, Mat b)
 	{
 		cout << "\nThe third eigenvector is:\n" << ces.eigenvectors().col(com_idx[2]);
 		v = ces.eigenvectors().col(com_idx[2]);
-		tcom = v(0);
+		tcom = v(3);
 		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
-		m_angle = acos(m_w)* (360/M_PI);
+		m_angle = 2 * acos(m_w)* (180/M_PI) ;//(360/M_PI) -180;
 		cout<<"\nangle = "<<m_angle<<endl;
-		tcom = v(1);
+		tcom = v(0);
 		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(2);
+		tcom = v(1);
 		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(3);
+		tcom = v(2);
 		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
 	}
@@ -870,17 +870,17 @@ void determineRotation(Mat a, Mat b)
 	{
 		cout << "\nThe fourth eigenvector is:\n" << ces.eigenvectors().col(com_idx[3]);
 		v = ces.eigenvectors().col(com_idx[3]);
-		tcom = v(0);
+		tcom = v(3);
 		m_w = tcom.real();//roundf(tcom.real()*1000)/1000;
-		m_angle = acos(m_w)* (360/M_PI);
+		m_angle = 2 * acos(m_w)* (180/M_PI) ;//(360/M_PI)-180;
 		cout<<"\nangle = "<<m_angle<<endl;
-		tcom = v(1);
+		tcom = v(0);
 		m_x = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"x-axis = "<<m_x / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(2);
+		tcom = v(1);
 		m_y = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"y-axis = "<<m_y / sin(m_angle * M_PI / 360)<<endl;
-		tcom = v(3);
+		tcom = v(2);
 		m_z = tcom.real();//roundf(tcom.real()*1000)/1000;
 		cout<<"z-axis = "<<m_z / sin(m_angle * M_PI / 360)<<endl;
 	}
@@ -943,10 +943,10 @@ int CalculateRotation(Mat img)
 		line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
 		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
 
-		cout<<"tvec = "<<tvec<<endl;
+//		cout<<"tvec = "<<tvec<<endl;
 		Mat rmat;
 		Rodrigues(rvec,rmat);
-		cout<<"rotation matrix = "<<rmat<<endl;
+//		cout<<"rotation matrix = "<<rmat<<endl;
 		Mat rtMat = (Mat_<double>(3,4) <<	rmat.at<double>(0,0), rmat.at<double>(0,1), rmat.at<double>(0,2), tvec.at<double>(0,0),
 					rmat.at<double>(1,0), rmat.at<double>(1,1), rmat.at<double>(1,2), tvec.at<double>(1,0),
 					rmat.at<double>(2,0), rmat.at<double>(2,1), rmat.at<double>(2,2), tvec.at<double>(2,0));
