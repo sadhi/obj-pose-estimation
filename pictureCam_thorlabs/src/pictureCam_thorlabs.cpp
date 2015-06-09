@@ -39,7 +39,7 @@ double bvals[200] = {};
 double cvals[200] = {};
 double dvals[200] = {};
 Mat a, b, c, d, q;
-Mat x1, x2;
+Mat x1;
 Mat tvecOld1, tvecOld2;
 Mat n;
 
@@ -673,8 +673,8 @@ int getChessOrientation(Mat img)
 
 
 /*
- * @param a: 4x4 matrix
- * @param b: 4x4 matrix
+ * @param a: 3x4 matrix
+ * @param b: 3x4 matrix
  *
  * repeat this an x number of times
 */
@@ -689,89 +689,126 @@ void determineRotation(Mat a, Mat b)
 	Mat a3 = Mat::zeros(4,4,CV_64F);
 	Mat b3 = Mat::zeros(4,4,CV_64F);
 
+//	Mat a4 = Mat::zeros(4,4,CV_64F);
+//	Mat b4 = Mat::zeros(4,4,CV_64F);
+
 	//Setting up data
 	//first set
-	a1.at<double>(0,1) = -(a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
-	a1.at<double>(1,0) = a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
-	a1.at<double>(0,2) = -(a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
-	a1.at<double>(2,0) = a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
-	a1.at<double>(0,3) = -(a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
-	a1.at<double>(3,0) = a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
-	a1.at<double>(1,2) = a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
-	a1.at<double>(2,1) = -(a.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
-	a1.at<double>(1,3) = -(a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
-	a1.at<double>(3,1) = a.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
-	a1.at<double>(2,3) = -(a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
-	a1.at<double>(3,2) = a.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
+	a1.at<double>(0,1) = -(a.at<double>(0,0) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a1.at<double>(1,0) = a.at<double>(0,0) + (a.at<double>(0,3) + q.at<double>(0,0));
+	a1.at<double>(0,2) = -(a.at<double>(1,0) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a1.at<double>(2,0) = a.at<double>(1,0) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a1.at<double>(0,3) = -(a.at<double>(2,0) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a1.at<double>(3,0) = a.at<double>(2,0) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a1.at<double>(1,2) = a.at<double>(2,0) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a1.at<double>(2,1) = -(a.at<double>(2,0) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a1.at<double>(1,3) = -(a.at<double>(1,0) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a1.at<double>(3,1) = a.at<double>(1,0) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a1.at<double>(2,3) = -(a.at<double>(0,0) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a1.at<double>(3,2) = a.at<double>(0,0) + (a.at<double>(0,3) + q.at<double>(0,0));
 
-	b1.at<double>(0,1) = -(b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
-	b1.at<double>(1,0) = b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
-	b1.at<double>(0,2) = -(b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
-	b1.at<double>(2,0) = b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
-	b1.at<double>(0,3) = -(b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
-	b1.at<double>(3,0) = b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
-	b1.at<double>(1,2) = b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0);
-	b1.at<double>(2,1) = -(b.at<double>(2,0) + a.at<double>(2,3) - q.at<double>(2,0));
-	b1.at<double>(1,3) = -(b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0));
-	b1.at<double>(3,1) = b.at<double>(1,0) + a.at<double>(1,3) - q.at<double>(1,0);
-	b1.at<double>(2,3) = -(b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0));
-	b1.at<double>(3,2) = b.at<double>(0,0) + a.at<double>(0,3) - q.at<double>(0,0);
+	b1.at<double>(0,1) = -(b.at<double>(0,0) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b1.at<double>(1,0) = b.at<double>(0,0) + (b.at<double>(0,3) + q.at<double>(0,0));
+	b1.at<double>(0,2) = -(b.at<double>(1,0) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b1.at<double>(2,0) = b.at<double>(1,0) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b1.at<double>(0,3) = -(b.at<double>(2,0) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b1.at<double>(3,0) = b.at<double>(2,0) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b1.at<double>(1,2) = b.at<double>(2,0) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b1.at<double>(2,1) = -(b.at<double>(2,0) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b1.at<double>(1,3) = -(b.at<double>(1,0) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b1.at<double>(3,1) = b.at<double>(1,0) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b1.at<double>(2,3) = -(b.at<double>(0,0) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b1.at<double>(3,2) = b.at<double>(0,0) + (b.at<double>(0,3) + q.at<double>(0,0));
 
 	//second set
-	a2.at<double>(0,1) = -(a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
-	a2.at<double>(1,0) = a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
-	a2.at<double>(0,2) = -(a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
-	a2.at<double>(2,0) = a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
-	a2.at<double>(0,3) = -(a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
-	a2.at<double>(3,0) = a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
-	a2.at<double>(1,2) = a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
-	a2.at<double>(2,1) = -(a.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
-	a2.at<double>(1,3) = -(a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
-	a2.at<double>(3,1) = a.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
-	a2.at<double>(2,3) = -(a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
-	a2.at<double>(3,2) = a.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
+	a2.at<double>(0,1) = -(a.at<double>(0,1) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a2.at<double>(1,0) = a.at<double>(0,1) + (a.at<double>(0,3) + q.at<double>(0,0));
+	a2.at<double>(0,2) = -(a.at<double>(1,1) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a2.at<double>(2,0) = a.at<double>(1,1) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a2.at<double>(0,3) = -(a.at<double>(2,1) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a2.at<double>(3,0) = a.at<double>(2,1) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a2.at<double>(1,2) = a.at<double>(2,1) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a2.at<double>(2,1) = -(a.at<double>(2,1) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a2.at<double>(1,3) = -(a.at<double>(1,1) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a2.at<double>(3,1) = a.at<double>(1,1) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a2.at<double>(2,3) = -(a.at<double>(0,1) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a2.at<double>(3,2) = a.at<double>(0,1) + (a.at<double>(0,3) + q.at<double>(0,0));
 
-	b2.at<double>(0,1) = -(b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
-	b2.at<double>(1,0) = b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
-	b2.at<double>(0,2) = -(b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
-	b2.at<double>(2,0) = b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
-	b2.at<double>(0,3) = -(b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
-	b2.at<double>(3,0) = b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
-	b2.at<double>(1,2) = b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0);
-	b2.at<double>(2,1) = -(b.at<double>(2,1) + a.at<double>(2,3) - q.at<double>(2,0));
-	b2.at<double>(1,3) = -(b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0));
-	b2.at<double>(3,1) = b.at<double>(1,1) + a.at<double>(1,3) - q.at<double>(1,0);
-	b2.at<double>(2,3) = -(b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0));
-	b2.at<double>(3,2) = b.at<double>(0,1) + a.at<double>(0,3) - q.at<double>(0,0);
+	b2.at<double>(0,1) = -(b.at<double>(0,1) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b2.at<double>(1,0) = b.at<double>(0,1) + (b.at<double>(0,3) + q.at<double>(0,0));
+	b2.at<double>(0,2) = -(b.at<double>(1,1) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b2.at<double>(2,0) = b.at<double>(1,1) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b2.at<double>(0,3) = -(b.at<double>(2,1) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b2.at<double>(3,0) = b.at<double>(2,1) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b2.at<double>(1,2) = b.at<double>(2,1) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b2.at<double>(2,1) = -(b.at<double>(2,1) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b2.at<double>(1,3) = -(b.at<double>(1,1) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b2.at<double>(3,1) = b.at<double>(1,1) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b2.at<double>(2,3) = -(b.at<double>(0,1) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b2.at<double>(3,2) = b.at<double>(0,1) + (b.at<double>(0,3) + q.at<double>(0,0));
 
 	//third set
-	a3.at<double>(0,1) = -(a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
-	a3.at<double>(1,0) = a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
-	a3.at<double>(0,2) = -(a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
-	a3.at<double>(2,0) = a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
-	a3.at<double>(0,3) = -(a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
-	a3.at<double>(3,0) = a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
-	a3.at<double>(1,2) = a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
-	a3.at<double>(2,1) = -(a.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
-	a3.at<double>(1,3) = -(a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
-	a3.at<double>(3,1) = a.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
-	a3.at<double>(2,3) = -(a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
-	a3.at<double>(3,2) = a.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
+	a3.at<double>(0,1) = -(a.at<double>(0,2) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a3.at<double>(1,0) = a.at<double>(0,2) + (a.at<double>(0,3) + q.at<double>(0,0));
+	a3.at<double>(0,2) = -(a.at<double>(1,2) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a3.at<double>(2,0) = a.at<double>(1,2) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a3.at<double>(0,3) = -(a.at<double>(2,2) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a3.at<double>(3,0) = a.at<double>(2,2) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a3.at<double>(1,2) = a.at<double>(2,2) + (a.at<double>(2,3) + q.at<double>(2,0));
+	a3.at<double>(2,1) = -(a.at<double>(2,2) + (a.at<double>(2,3) + q.at<double>(2,0)));
+	a3.at<double>(1,3) = -(a.at<double>(1,2) + (a.at<double>(1,3) + q.at<double>(1,0)));
+	a3.at<double>(3,1) = a.at<double>(1,2) + (a.at<double>(1,3) + q.at<double>(1,0));
+	a3.at<double>(2,3) = -(a.at<double>(0,2) + (a.at<double>(0,3) + q.at<double>(0,0)));
+	a3.at<double>(3,2) = a.at<double>(0,2) + (a.at<double>(0,3) + q.at<double>(0,0));
 
-	b3.at<double>(0,1) = -(b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
-	b3.at<double>(1,0) = b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
-	b3.at<double>(0,2) = -(b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
-	b3.at<double>(2,0) = b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
-	b3.at<double>(0,3) = -(b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
-	b3.at<double>(3,0) = b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
-	b3.at<double>(1,2) = b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0);
-	b3.at<double>(2,1) = -(b.at<double>(2,2) + a.at<double>(2,3) - q.at<double>(2,0));
-	b3.at<double>(1,3) = -(b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0));
-	b3.at<double>(3,1) = b.at<double>(1,2) + a.at<double>(1,3) - q.at<double>(1,0);
-	b3.at<double>(2,3) = -(b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0));
-	b3.at<double>(3,2) = b.at<double>(0,2) + a.at<double>(0,3) - q.at<double>(0,0);
+	b3.at<double>(0,1) = -(b.at<double>(0,2) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b3.at<double>(1,0) = b.at<double>(0,2) + (b.at<double>(0,3) + q.at<double>(0,0));
+	b3.at<double>(0,2) = -(b.at<double>(1,2) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b3.at<double>(2,0) = b.at<double>(1,2) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b3.at<double>(0,3) = -(b.at<double>(2,2) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b3.at<double>(3,0) = b.at<double>(2,2) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b3.at<double>(1,2) = b.at<double>(2,2) + (b.at<double>(2,3) + q.at<double>(2,0));
+	b3.at<double>(2,1) = -(b.at<double>(2,2) + (b.at<double>(2,3) + q.at<double>(2,0)));
+	b3.at<double>(1,3) = -(b.at<double>(1,2) + (b.at<double>(1,3) + q.at<double>(1,0)));
+	b3.at<double>(3,1) = b.at<double>(1,2) + (b.at<double>(1,3) + q.at<double>(1,0));
+	b3.at<double>(2,3) = -(b.at<double>(0,2) + (b.at<double>(0,3) + q.at<double>(0,0)));
+	b3.at<double>(3,2) = b.at<double>(0,2) + (b.at<double>(0,3) + q.at<double>(0,0));
 
-	n = (a1.t() * b1) + (a2.t() * b2) + (a3.t() * b3);
+	//fourth set
+//	a4.at<double>(0,1) = -(a.at<double>(0,3)  - q.at<double>(0,0));
+//	a4.at<double>(1,0) = a.at<double>(0,3)  - q.at<double>(0,0);
+//	a4.at<double>(0,2) = -(a.at<double>(1,3) - q.at<double>(1,0));
+//	a4.at<double>(2,0) = a.at<double>(1,3) - q.at<double>(1,0);
+//	a4.at<double>(0,3) = -(a.at<double>(2,3)  - q.at<double>(2,0));
+//	a4.at<double>(3,0) = a.at<double>(2,3)  - q.at<double>(2,0);
+//	a4.at<double>(1,2) = a.at<double>(2,3)  - q.at<double>(2,0);
+//	a4.at<double>(2,1) = -(a.at<double>(2,3)  - q.at<double>(2,0));
+//	a4.at<double>(1,3) = -(a.at<double>(1,3)  - q.at<double>(1,0));
+//	a4.at<double>(3,1) = a.at<double>(1,3)  - q.at<double>(1,0);
+//	a4.at<double>(2,3) = -(a.at<double>(0,3) - q.at<double>(0,0));
+//	a4.at<double>(3,2) = a.at<double>(0,3) - q.at<double>(0,0);
+//
+//	b4.at<double>(0,1) = -(b.at<double>(0,3) - q.at<double>(0,0));
+//	b4.at<double>(1,0) = b.at<double>(0,3) - q.at<double>(0,0);
+//	b4.at<double>(0,2) = -(b.at<double>(1,3) - q.at<double>(1,0));
+//	b4.at<double>(2,0) = b.at<double>(1,3) - q.at<double>(1,0);
+//	b4.at<double>(0,3) = -(b.at<double>(2,3) - q.at<double>(2,0));
+//	b4.at<double>(3,0) = b.at<double>(2,3) - q.at<double>(2,0);
+//	b4.at<double>(1,2) = b.at<double>(2,3) - q.at<double>(2,0);
+//	b4.at<double>(2,1) = -(b.at<double>(2,3) - q.at<double>(2,0));
+//	b4.at<double>(1,3) = -(b.at<double>(1,3) - q.at<double>(1,0));
+//	b4.at<double>(3,1) = b.at<double>(1,3) - q.at<double>(1,0);
+//	b4.at<double>(2,3) = -(b.at<double>(0,3) - q.at<double>(0,0));
+//	b4.at<double>(3,2) = b.at<double>(0,3) - q.at<double>(0,0);
+
+//	cout<<"a.col(3) = \n"<< a.col(3) <<endl;
+//	cout<<"\na2 = \n"<< a2 <<endl;
+//	cout<<"\na3 = \n"<< a3 <<endl;
+//	cout<<"\nb.col(3) = \n"<< b.col(3) <<endl;
+//	cout<<"\nb2 = \n"<< b2 <<endl;
+//	cout<<"\nb3 = \n"<< b3 <<endl;
+
+	n = (a1.t() * b1) + (a2.t() * b2) + (a3.t() * b3) ;//+ (a4.t() * b4);
 
 	Mat n_com = Mat::zeros(4,4,CV_64FC2);// (Mat_< Vec2f >(4, 4) << n.at<double>(0,0), n.at<double>(0,1), n.at<double>(0,2), n.at<double>(0,3),
 	for(int i = 0; i<4; i++)
@@ -897,7 +934,7 @@ int CalculateRotation(Mat img)
 	int boardWidth = 6;
 	Size cbSize = Size(boardHeight,boardWidth);
 
-	vector<Point2d> imagePoints;
+	vector<Point2d> imagePoints, imgPoints;
 	bool found = false;
 
 	//detect chessboard corners
@@ -939,15 +976,65 @@ int CalculateRotation(Mat img)
 				boardPoints.push_back( Point3d( double(i), double(j), 0.0) );
 			}
 		}
-		line(img, imagePoints[0],imagePoints[boardHeight-1],w);
-		line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
-		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+		//setup container for points
+		Mat rtMat = Mat::zeros(3,4,CV_64F) ;
+				line(img, imagePoints[0],imagePoints[boardHeight-1],w);
+				line(img, imagePoints[0],imagePoints[boardHeight*(boardWidth - 1)],w);
 
-//		cout<<"tvec = "<<tvec<<endl;
+		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+//		rtMat.at<double>(0,0) = tvec.at<double>(0,0);
+//		rtMat.at<double>(1,0) = tvec.at<double>(1,0);
+//		rtMat.at<double>(2,0) = tvec.at<double>(2,0);
+//		cout<<"tvec0 = "<<tvec<<endl;
+//
+////		cout<<"\nsecond reverse: ";
+////		for(int i = 0; i<boardHeight*boardWidth;i++)
+////			cout<<imgPoints[i]<<", ";
+//		//inverse the dataset to set the opposite corner as origin
+//		imgPoints = imagePoints;
+//		for(int i = 1; i<=boardHeight*boardWidth; i++)
+//		{
+//			imgPoints[i-1] = imagePoints[(boardHeight*boardWidth)-i];
+//		}
+//		solvePnPRansac( Mat(boardPoints), Mat(imgPoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+//		rtMat.at<double>(0,2) = tvec.at<double>(0,0);
+//		rtMat.at<double>(1,2) = tvec.at<double>(1,0);
+//		rtMat.at<double>(2,2) = tvec.at<double>(2,0);
+//		cout<<"tvec2 = "<<tvec<<endl;
+//
+//		//now 'rotate' 90 degrees we want the coordinates of this corner
+//		int count = 0;
+//		for(int j = 0; j<boardWidth; j++)
+//		{
+//			for(int i = 0; i<boardHeight; i++)
+//			{
+//				imgPoints[count] = imagePoints[(i*boardWidth)+j];
+//				count++;
+//			}
+//		}
+//		line(img, imgPoints[0],imgPoints[boardHeight-1],w);
+//		line(img, imgPoints[0],imgPoints[boardHeight*(boardWidth - 1)],w);
+//		solvePnPRansac( Mat(boardPoints), Mat(imgPoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+//		rtMat.at<double>(0,1) = tvec.at<double>(0,0);
+//		rtMat.at<double>(1,1) = tvec.at<double>(1,0);
+//		rtMat.at<double>(2,1) = tvec.at<double>(2,0);
+//		cout<<"tvec1 = "<<tvec<<endl;
+//
+//		//inverse the dataset to set the opposite corner as origin
+//		for(int i = 1; i<=boardHeight*boardWidth; i++)
+//		{
+//			imagePoints[i-1] = imgPoints[(boardHeight*boardWidth)-i];
+//		}
+//		solvePnPRansac( Mat(boardPoints), Mat(imagePoints), intrinsics, distortion, rvec, tvec, false ,200,8.0,200);
+//		rtMat.at<double>(0,3) = tvec.at<double>(0,0);
+//		rtMat.at<double>(1,3) = tvec.at<double>(1,0);
+//		rtMat.at<double>(2,3) = tvec.at<double>(2,0);
+//
+//		cout<<"tvec3 = "<<tvec<<endl;
 		Mat rmat;
 		Rodrigues(rvec,rmat);
-//		cout<<"rotation matrix = "<<rmat<<endl;
-		Mat rtMat = (Mat_<double>(3,4) <<	rmat.at<double>(0,0), rmat.at<double>(0,1), rmat.at<double>(0,2), tvec.at<double>(0,0),
+//		cout<<"rotation matrix = "<<rtMat<<endl;
+		rtMat = (Mat_<double>(3,4) <<	rmat.at<double>(0,0), rmat.at<double>(0,1), rmat.at<double>(0,2), tvec.at<double>(0,0),
 					rmat.at<double>(1,0), rmat.at<double>(1,1), rmat.at<double>(1,2), tvec.at<double>(1,0),
 					rmat.at<double>(2,0), rmat.at<double>(2,1), rmat.at<double>(2,2), tvec.at<double>(2,0));
 		double a_abs, b_abs, c_abs, d_abs;
@@ -958,7 +1045,7 @@ int CalculateRotation(Mat img)
 		case 0:
 			a = tvec;
 			cout<<"a = "<< a <<endl;
-			x1 = rmat;
+//			x1 = rmat;
 			rndx++;
 			break;
 		case 1:
@@ -974,7 +1061,6 @@ int CalculateRotation(Mat img)
 		case 3:
 			d = tvec;
 			cout<<"d = "<< d <<endl;
-			x2 = rtMat;
 			rndx++;
 			// |q|^2 -2qa - |a|^2 = |q|^2 -2qb - |b|^2
 			// 2q(b-a) = |a|^2 - |b|^2
@@ -1000,13 +1086,15 @@ int CalculateRotation(Mat img)
 			q = 0.5 * m.inv() * det;
 			cout << "\nq = " << q <<endl;
 			cout << "\n<--------------------------------------------------------->\n"<<endl;
+//			rtMat.col(3) = q;
+			x1 = rtMat;
 			break;
 		default:
 			if(rndx >= 4){
-			cout<<"\nprevious rotation:\n"<<x2<<endl;
-			cout<<"current rotation:\n"<<rtMat<<endl;
-			determineRotation(rtMat, x2);
-			x2 = rtMat;
+			cout<<"\nprevious points:\n"<<x1<<endl;
+			cout<<"current points:\n"<<rtMat<<endl;
+			determineRotation(rtMat, x1);
+			x1 = rtMat;
 			rndx++;
 			}
 			break;
