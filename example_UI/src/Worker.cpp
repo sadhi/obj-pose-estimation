@@ -24,7 +24,7 @@
 #include "opencv2/core/eigen.hpp"
 
 #include "opencv2/videoio/videoio_c.h"
-//#include <LU>
+#include <LU>
 
 // wxwidgets includes
 #include "wx/wxprec.h"
@@ -305,6 +305,7 @@ void Worker::calibrate()
 
 void Worker::determineRotation(Mat a, Mat b)
 {
+
 	Mat a1 = Mat::zeros(4,4,CV_64F);
 	Mat b1 = Mat::zeros(4,4,CV_64F);
 

@@ -1093,7 +1093,7 @@ int CalculateRotation(Mat img)
 			if(rndx >= 4){
 			cout<<"\nprevious points:\n"<<x1<<endl;
 			cout<<"current points:\n"<<rtMat<<endl;
-			determineRotation(rtMat, x1);
+			determineRotation(x1, rtMat);
 			x1 = rtMat;
 			rndx++;
 			}

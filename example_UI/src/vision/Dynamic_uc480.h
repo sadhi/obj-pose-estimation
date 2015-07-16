@@ -11,6 +11,12 @@
 #ifndef _DYNAMIC_API_H_
 #define _DYNAMIC_API_H_
 
+#ifdef _UNICODE
+typedef wchar_t TCHAR;
+#else
+typedef char TCHAR;
+#endif
+
 #include <uc480.h>
 
 #define USB2CAMERA_MACRO_DO(name) typedef INT (__cdecl* IS__##name)
